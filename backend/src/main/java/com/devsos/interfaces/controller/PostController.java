@@ -1,0 +1,63 @@
+package com.devsos.interfaces.controller;
+
+import com.devsos.application.dto.post.PostCreateRequestDTO;
+import com.devsos.application.dto.post.PostResponseDTO;
+import com.devsos.application.service.PostService;
+import jakarta.validation.Valid;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.data.web.PagedModel;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.net.URI;
+
+/**
+ * Controlador REST do feed de posts.
+ *
+ * <h2>Sobre o nome da rota</h2>
+ * {@code POST /api/posts} e {@code GET /api/posts} são "routes RESTful":
+ * o verbo HTTP diz a intenção (criar vs. listar) e o path o recurso (posts).
+ * <p>
+ * <b>201 Created</b>: quando uma publicação nasce, o código de status correto
+ * é 201 (recurso criado), não 200. Repare também no {@code Location} no
+ * cabeçalho — indica onde o novo recurso "mora".
+ */
+@RestController
+@RequestMapping("/api/posts")
+public class PostController {
+
+    private final PostService postService;
+
+    public PostController(PostService postService) {
+        this.postService = postService;
+    }
+
+    /**
+     * GET /api/posts?page=0&size=10&sort=createdAt,desc
+     * Feed paginado de posts OPEN, mais recentes primeiro.
+     */
+    @GetMapping
+    public ResponseEntity<PagedModel<PostResponseDTO>> listarFeed(
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+
+        return ResponseEntity.ok(postService.listarFeed(pageable));
+    }
+
+    /** POST /api/posts — cria uma dúvida. {@code @Valid} aciona a validação do DTO. */
+    @PostMapping
+    public ResponseEntity<PostResponseDTO> criarPost(@Valid @RequestBody PostCreateRequestDTO request) {
+        PostResponseDTO created = postService.criar(request);
+
+        return ResponseEntity
+            .status(HttpStatus.CREATED)
+            .location(URI.create("/api/posts/" + created.id()))
+            .body(created);
+    }
+}
