@@ -15,6 +15,9 @@ com chat ao vivo e avaliação mútua.
 ├── backend/
 │   ├── pom.xml             # Spring Boot 4.1.1 · Java 25
 │   └── src/main/           # Core: perfis, feed de posts e autenticação JWT
+├── mobile/
+│   ├── src/                # App Expo em camadas (services, hooks, components, screens)
+│   └── docs/               # Passo a passo, rede e o papel do frontend
 └── docs/
     ├── TECNICA.md        # Documentação do banco (desenvolvedores/DBA)
     ├── EXECUTIVA.md      # Documentação do banco (leigos)
@@ -60,6 +63,7 @@ A API sobe em `http://localhost:8080` (documentação REST e WebSocket em
 
 ## Documentação
 
-- [API REST](docs/API.md) — rotas, JSONs e guia arquitetural.
+- [API REST + WebSocket](docs/API.md) — rotas, JSONs, canais STOMP e guia arquitetural.
 - [Banco (técnica)](docs/TECNICA.md) — dicionário de dados, índices e concorrência.
 - [Executiva banco](docs/EXECUTIVA.md) e [Executiva backend](docs/EXECUTIVA_BACKEND.md) — sem jargão.
+- [Mobile](mobile/README.md) — app React Native/Expo (passo a passo dentro de `mobile/docs/`).

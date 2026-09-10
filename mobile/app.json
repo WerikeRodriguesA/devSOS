@@ -1,0 +1,13 @@
+{
+  "expo": {
+    "name": "DevSOS",
+    "slug": "devsos-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#F6F0FF",
+    "android": {
+      "package": "com.devsos.mobile"
+    }
+  }
+}
