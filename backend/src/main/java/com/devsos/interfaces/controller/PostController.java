@@ -3,6 +3,7 @@ package com.devsos.interfaces.controller;
 import com.devsos.application.dto.post.PostCreateRequestDTO;
 import com.devsos.application.dto.post.PostResponseDTO;
 import com.devsos.application.service.PostService;
+import com.devsos.infrastructure.security.IdUsuarioLogado;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -10,6 +11,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.data.web.PagedModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -50,10 +52,17 @@ public class PostController {
         return ResponseEntity.ok(postService.listarFeed(pageable));
     }
 
-    /** POST /api/posts — cria uma dúvida. {@code @Valid} aciona a validação do DTO. */
+    /**
+     * POST /api/posts — cria uma dúvida. {@code @Valid} aciona a validação do DTO.
+     * <p>O autor não vem no corpo: quem cria o post é o usuário do TOKEN
+     * ({@code @AuthenticationPrincipal} injeta o {@code IdUsuarioLogado}).</p>
+     */
     @PostMapping
-    public ResponseEntity<PostResponseDTO> criarPost(@Valid @RequestBody PostCreateRequestDTO request) {
-        PostResponseDTO created = postService.criar(request);
+    public ResponseEntity<PostResponseDTO> criarPost(
+            @AuthenticationPrincipal IdUsuarioLogado logado,
+            @Valid @RequestBody PostCreateRequestDTO request) {
+
+        PostResponseDTO created = postService.criar(logado.id(), request);
 
         return ResponseEntity
             .status(HttpStatus.CREATED)

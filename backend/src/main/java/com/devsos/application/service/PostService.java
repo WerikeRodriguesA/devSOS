@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Serviço de posts: regras de negócio do feed.
@@ -61,12 +62,13 @@ public class PostService {
      *       (validação idêntica à {@code posts_clean_reward} do banco);</li>
      *   <li>Persiste e devolve o DTO de resposta com HTTP 201 no Controller.</li>
      * </ol>
-     * <p>Repare que o {@code status} e o {@code createdAt} são definidos pela
-     * entidade ({@code PostEntity.criar()}), nunca pelo cliente.
+     * <p>O {@code authorId} é recebido do TOKEN (usuário autenticado), e o
+     * {@code status}/{@code createdAt} são definidos pela entidade
+     * ({@code PostEntity.criar()}), nunca pelo cliente.
      */
     @Transactional
-    public PostResponseDTO criar(PostCreateRequestDTO request) {
-        UserEntity author = userRepository.findById(request.authorId())
+    public PostResponseDTO criar(UUID authorId, PostCreateRequestDTO request) {
+        UserEntity author = userRepository.findById(authorId)
             .orElseThrow(() -> ResourceNotFoundException.of("Usuário autor"));
 
         validarRecompensa(request.tipo(), request.recompensaValor());

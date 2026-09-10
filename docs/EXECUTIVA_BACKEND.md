@@ -89,12 +89,42 @@ regras de erro — em vez de cada garçom inventar a própria desculpa.
 
 ---
 
-## 5. O que vem depois
+## 5. Conta e identidade (login)
 
-Esta etapa cobre **perfis e o feed**. No futuro:
+A nova "temporada" adicionou **criar conta e entrar** — o DevSOS agora sabe
+**quem é você**:
+
+- **Criar conta:** informa nome, e-mail e senha. A senha **nunca é guardada
+  em texto puro** (nem o próprio sistema consegue ler de volta) — é como
+  guardar um cofre com a chave quebrada: quem roubar o arquivo não usa.
+- **Entrar:** e-mail + senha. Se acertar, o sistema entrega um **crachá
+  digital** (um "token") com validade de 1 hora.
+- **Usar o crachá:** o app anexa o crachá em cada pedido protegido. Se o
+  crachá estiver velho (mais de 1 hora) ou falso, o sistema responde
+  "não autenticado" (código 401).
+- **E-mail já cadastrado?** O sistema avisa na hora — ninguém duplica conta.
+
+### O que isso mudou para você, usuário
+
+- **O autor do post agora é você de verdade.** Antes o dev dizia "sou o Fulano"
+  e o sistema acreditava. Agora o autor sai da conta logada — é impossível
+  publicar como outra pessoa.
+- **Update de perfil é seu:** só quem está logado altera as próprias
+  tecnologias. Ninguém edita o perfil de terceiros.
+- **O feed continua aberto:** ver posts e perfis não exige cadastro (como o
+  Instagram).
+
+> **Crachá com prazo de validade?** Não se preocupe: o 1h é renovado
+> automaticamente a cada novo login. Refresh automático entra na próxima etapa.
+
+---
+
+## 6. O que vem depois
+
+Esta etapa cobre **perfis, feed e autenticação**. No futuro:
 
 - O botão "Aceitar Socorro" (criar a "corrida"/sala de chat);
-- Login com senha/GitHub (hoje o autor é informado no pedido);
+- Renovação automática do token (refresh) e "sair de todos os aparelhos";
 - Upload da foto do erro direto do celular.
 
 ---

@@ -32,6 +32,7 @@ CREATE TABLE users (
     id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     nome                     VARCHAR(120)     NOT NULL,
     email                    VARCHAR(255)     NOT NULL,
+    password_hash            VARCHAR(100)     NOT NULL DEFAULT '$2a$10$placeholder',
     bio                      TEXT             NOT NULL DEFAULT '',
     github_username          VARCHAR(60)      NOT NULL DEFAULT '',
     avatar_url               TEXT             NOT NULL DEFAULT '',
