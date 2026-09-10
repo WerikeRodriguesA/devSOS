@@ -65,6 +65,9 @@ public class UserEntity {
     @Column(name = "email", nullable = false)
     private String email;
 
+    @Column(name = "password_hash", nullable = false)
+    private String passwordHash;
+
     @Column(name = "bio")
     private String bio;
 
@@ -117,10 +120,11 @@ public class UserEntity {
      * um construtor estático/factory ou um constructores explícito e pensar
      * o construtor como "regra de negócio".
      */
-    public UserEntity(String nome, String email, String githubUsername) {
+    public UserEntity(String nome, String email, String githubUsername, String passwordHash) {
         this.nome = nome;
         this.email = email;
         this.githubUsername = githubUsername;
+        this.passwordHash = passwordHash;
         this.bio = "";
         this.avatarUrl = "";
         this.saldoPontos = 0;

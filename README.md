@@ -10,10 +10,11 @@ com chat ao vivo e avaliação mútua.
 .
 ├── README.md
 ├── database/
-│   └── schema.sql        # DDL completo (PostgreSQL 13+)
+│   ├── schema.sql          # DDL completo (PostgreSQL 13+)
+│   └── migrations/         # Migrações incrementais (ex.: v2 autenticação)
 ├── backend/
-│   ├── pom.xml           # Spring Boot 4.1.1 · Java 25
-│   └── src/main/         # Core: perfis de usuários + feed de posts
+│   ├── pom.xml             # Spring Boot 4.1.1 · Java 25
+│   └── src/main/           # Core: perfis, feed de posts e autenticação JWT
 └── docs/
     ├── TECNICA.md        # Documentação do banco (desenvolvedores/DBA)
     ├── EXECUTIVA.md      # Documentação do banco (leigos)
@@ -33,6 +34,10 @@ docker run -d --name devsos-db \
 
 docker cp database/schema.sql devsos-db:/tmp/schema.sql
 docker exec devsos-db psql -U devsos -d devsos -v ON_ERROR_STOP=1 -f /tmp/schema.sql
+
+# Bancos criados em versões anteriores (leva o login JWT):
+docker cp database/migrations/v2_auth_password_hash.sql devsos-db:/tmp/v2.sql
+docker exec devsos-db psql -U devsos -d devsos -v ON_ERROR_STOP=1 -f /tmp/v2.sql
 ```
 
 ### 2. Backend

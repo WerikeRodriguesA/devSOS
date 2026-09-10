@@ -27,17 +27,16 @@ import java.util.UUID;
  *       ({@code @NotBlank}, {@code @Size}...) são declaradas aqui, na "porta de
  *       entrada", e o Spring as dispara sozinho no Controller.</li>
  * </ol>
- * <p><b>authorId:</b> no MVP (sem login social), o autor é informado pelo
- * cliente. Quando a autenticação existir, este campo será substituído pelo
- * "usuário da sessão" — utilize apenas como um placeholder explícito.
+ *
+ * <p><b>Onde está o autor ({@code authorId})?</b> Desde a iteração de
+ * autenticação, o autor é definido pelo TOKEN JWT (usuário logado), nunca pelo
+ * corpo da requisição. O Controller lê o {@code IdUsuarioLogado} do
+ * {@code SecurityContext} e passa para o Service.</p>
  *
  * <p><b>Observação:</b> em produção eu validaria também o corpo do POST
  * (máx. de bytes) — por enquanto fica registrado no Roadmap.
  */
 public record PostCreateRequestDTO(
-
-    @NotNull(message = "Informe o id do autor do post")
-    UUID authorId,
 
     @NotBlank(message = "O título é obrigatório")
     @Size(min = 3, max = 160, message = "O título deve ter entre 3 e 160 caracteres")
