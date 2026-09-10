@@ -1,7 +1,8 @@
-# Java / Gradle
+# Java / Gradle / Maven
 target/
 build/
 *.class
+backend/target/
 
 # IDE
 .idea/
