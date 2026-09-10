@@ -6,10 +6,16 @@
 -- Autor  : devSOS Team
 -- ----------------------------------------------------------------------------
 -- ESCOPO
---   1. Tabela users   : cadastro dos devs (quem pede e quem ajuda)
---   2. Tabela posts   : os "problemas" publicados no feed
---   3. Tabela sessions: a "corrida" — vínculo entre post, helper e chat
---   4. Tabela reviews : avaliação mútua após uma sessão concluída
+--   1. Tabela users        : cadastro dos devs (quem pede e quem ajuda)
+--   2. Tabela posts        : os "problemas" publicados no feed
+--   3. Tabela sessions     : a "corrida" — vínculo entre post, helper e chat
+--   4. Tabela reviews      : avaliação mútua após uma sessão concluída
+--   5. Tabela chat_messages: mensagens trocadas na sala de uma corrida
+-- ----------------------------------------------------------------------------
+-- MIGRAÇÕES APLICADAS ACIMA DESTE SCRIPT (bancos antigos, em ordem)
+--   v2  auth_password_hash     → coluna users.password_hash (login JWT)
+--   v3  uma_corrida_por_post   → índice único de corrida ativa por post
+--   v4  chat_messages          → tabela de mensagens do chat (WebSocket)
 -- ----------------------------------------------------------------------------
 -- CONVENÇÕES
 --   * Todas as PKs são UUID geradas no banco (gen_random_uuid()).
@@ -143,6 +149,27 @@ CREATE TABLE reviews (
 CREATE INDEX idx_reviews_reviewed  ON reviews (reviewed_id, created_at DESC);
 CREATE INDEX idx_reviews_reviewer  ON reviews (reviewer_id);
 CREATE INDEX idx_reviews_session   ON reviews (session_id);
+
+-- ============================================================================
+-- 5) TABELA chat_messages (mensagens da sala de uma corrida)
+-- ============================================================================
+CREATE TABLE chat_messages (
+    id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    session_id   UUID        NOT NULL,
+    chat_room_id UUID        NOT NULL,
+    sender_id    UUID        NOT NULL,
+    tipo         TEXT        NOT NULL DEFAULT 'CHAT'
+                             CHECK (tipo IN ('CHAT', 'CODE_SNIPPET', 'JOIN', 'LEAVE')),
+    conteudo     TEXT        NOT NULL DEFAULT '',
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+    CONSTRAINT fk_chat_messages_session FOREIGN KEY (session_id) REFERENCES sessions (id) ON DELETE CASCADE,
+    CONSTRAINT fk_chat_messages_sender  FOREIGN KEY (sender_id)  REFERENCES users (id)    ON DELETE CASCADE
+);
+
+-- Busca por sala em ordem cronológica (o histórico do chat)
+CREATE INDEX idx_chat_room   ON chat_messages (chat_room_id, created_at);
+CREATE INDEX idx_chat_session ON chat_messages (session_id, created_at);
 
 -- ============================================================================
 -- TRIGGERS: atualização automática de updated_at (+ média de avaliações)

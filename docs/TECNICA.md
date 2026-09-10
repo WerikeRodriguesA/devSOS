@@ -29,10 +29,12 @@ O banco de dados é **relacional** e possui 4 tabelas:
 
 ```
 users 1 ────< N posts 1 ────< 1 sessions >──── 1 users (helper)
-                            1
+                            1        │
+                            │        └──── >──── N chat_messages (session_id)
                             │
                             └──── >──── 1 reviews (session_id)
           users <──── reviewers/reviewed (1:N reviews)
+          users <──── chat_messages (sender_id 1:N)
 ```
 
 Resumo das cardinalidades:
@@ -113,7 +115,7 @@ Vincula um `post` a um `helper` e guarda a sala de chat.
 | `post_id`       | `UUID`          | Não    | —                 | **FK → `posts.id`** com `ON DELETE CASCADE`           |
 | `helper_id`     | `UUID`          | Não    | —                 | **FK → `users.id`** com `ON DELETE CASCADE`           |
 | `status`        | `TEXT`          | Não    | `'MATCHED'`       | **CHECK `IN ('MATCHED','ACTIVE','COMPLETED','CANCELLED')`** |
-| `chat_room_id`  | `UUID`          | Não    | `gen_random_uuid()`| ID da sala de chat (integração externa)               |
+| `chat_room_id`  | `UUID`          | Não    | `gen_random_uuid()`| Sala do chat em tempo real (redireciona para `chat_messages`) |
 | `created_at`    | `TIMESTAMPTZ`   | Não    | `now()`           | UTC                                                   |
 | `updated_at`    | `TIMESTAMPTZ`   | Não    | `now()`           | Trigger `trg_sessions_touch`                          |
 | `completed_at`  | `TIMESTAMPTZ`   | Sim    | —                 | Populado quando `status = 'COMPLETED'`                |
@@ -163,6 +165,32 @@ Avaliação mútua após uma sessão concluída.
 - `reviews_avaliador_diff` (CHECK): ninguém se auto-avalia.
 - **Trigger `trg_reviews_rating`**: ao inserir uma review, recalcula
   `users.media_avaliacoes` do avaliado automaticamente.
+
+---
+
+### 3.5 Tabela `chat_messages` (mensagens da sala do chat)
+
+Persiste o que foi dito na sala de chat de uma corrida (o chat em tempo real
+roda por WebSocket/STOMP, mas todo envio é gravado aqui — o "histórico").
+
+| Coluna         | Tipo            | Nulo   | Default           | Restrições / Observações                        |
+|----------------|-----------------|--------|-------------------|--------------------------------------------------|
+| `id`           | `UUID`          | Não    | `gen_random_uuid()` | Chave primária                                  |
+| `session_id`   | `UUID`          | Não    | —                 | **FK → `sessions.id`** com `ON DELETE CASCADE` — é por ela que autorizamos quem lê o histórico (participantes) |
+| `chat_room_id` | `UUID`          | Não    | —                 | Sala usada pelo WebSocket em `/topic/chat/{chat_room_id}` (denormalizada para busca rápida) |
+| `sender_id`    | `UUID`          | Não    | —                 | **FK → `users.id`** com `ON DELETE CASCADE` (quem escreveu) |
+| `tipo`         | `TEXT`          | Não    | `'CHAT'`          | **CHECK `IN ('CHAT','CODE_SNIPPET','JOIN','LEAVE')`** |
+| `conteudo`     | `TEXT`          | Não    | `''`              | Texto digitado / trecho de código                |
+| `created_at`   | `TIMESTAMPTZ`   | Não    | `now()`           | UTC — ordem do histórico por esta coluna         |
+
+**Índices:**
+
+- `idx_chat_room` (`chat_room_id, created_at`): histórico da sala em ordem.
+- `idx_chat_session` (`session_id, created_at`): consultas por corrida.
+
+**Regra de autorização (aplicação):** `sender_id` nunca vem do cliente — o
+servidor preenche com o usuário do JWT da conexão, e só `author`/`helper` da
+sessão conseguem enviar ou ler.
 
 ---
 
@@ -351,8 +379,7 @@ SELECT * FROM users LIMIT 5;
 - [ ] Decidir entre `ON DELETE CASCADE` e **soft-delete** para `posts`.
 - [ ] Adicionar `docs.md` de API (endpoints REST expondo este schema).
 - [ ] Avaliar migração para UUIDv7 se a escrita no feed for intensa.
-- [ ] Avaliar `messages` (tabela de chat) — no MVP o chat vive fora do PG
-      (real-time), mas um log de mensagens é útil para auditoria.
+- [x] Tabela `chat_messages` (histórico das salas de chat) — criada em `v4_chat_messages.sql`.
 
 ---
 

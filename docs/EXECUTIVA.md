@@ -146,6 +146,7 @@ precisa ficar conferindo na mão.
 
 ---
 
-*Este documento acompanha a parte técnica (`docs/TECNICA.md`). Quando o
-aplicativo crescer, estas gavetas podem ganhar mais cadernos — como as
-mensagens do chat, que hoje ficam guardadas em outro lugar (em tempo real).*
+*Este documento acompanha a parte técnica (`docs/TECNICA.md`). Desde a quarta
+versão do sistema existe um caderno próprio para as **mensagens do chat** (a
+gaveta `chat_messages`): cada frase dita numa sala fica registrada lá, e por
+isso quem entra numa conversa depois consegue ler o que já foi falado.*

@@ -1,8 +1,10 @@
 package com.devsos.interfaces.controller;
 
+import com.devsos.application.dto.chat.ChatMessageDTO;
 import com.devsos.application.dto.session.SessionCreateRequestDTO;
 import com.devsos.application.dto.session.SessionResponseDTO;
 import com.devsos.application.dto.session.SessionUpdateStatusRequestDTO;
+import com.devsos.application.service.ChatMessageService;
 import com.devsos.application.service.SessionService;
 import com.devsos.infrastructure.security.IdUsuarioLogado;
 import jakarta.validation.Valid;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -34,9 +37,12 @@ import java.util.UUID;
 public class SessionController {
 
     private final SessionService sessionService;
+    private final ChatMessageService chatMessageService;
 
-    public SessionController(SessionService sessionService) {
+    public SessionController(SessionService sessionService,
+                             ChatMessageService chatMessageService) {
         this.sessionService = sessionService;
+        this.chatMessageService = chatMessageService;
     }
 
     /** POST /api/sessions — o helper aceita o socorro de um post OPEN. */
@@ -74,5 +80,17 @@ public class SessionController {
             @PathVariable UUID id,
             @AuthenticationPrincipal IdUsuarioLogado logado) {
         return ResponseEntity.ok(sessionService.detalhar(id, logado.id()));
+    }
+
+    /**
+     * GET /api/sessions/{id}/messages — histórico da sala da corrida.
+     * Só participantes (autor ou helper) conseguem listar. A SALA em que a
+     * corrida é "quem está dentro do WhatsApp"; terceiro não lê nem por engano.
+     */
+    @GetMapping("/{id}/messages")
+    public ResponseEntity<List<ChatMessageDTO>> historicoMensagens(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal IdUsuarioLogado logado) {
+        return ResponseEntity.ok(chatMessageService.historico(id, logado.id()));
     }
 }

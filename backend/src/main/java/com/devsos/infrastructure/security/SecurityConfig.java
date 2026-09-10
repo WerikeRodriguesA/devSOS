@@ -55,6 +55,9 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/register", "/api/auth/login").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/posts", "/api/posts/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/users", "/api/users/**").permitAll()
+                // Handshake do WebSocket: o JWT é validado pelo JwtWebSocketHandshakeInterceptor
+                // (o filtro HTTP do REST não alcança o trânsito de mensagens posterior).
+                .requestMatchers("/ws-devsos/**").permitAll()
                 .anyRequest().authenticated())
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
