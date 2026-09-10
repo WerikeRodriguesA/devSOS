@@ -1,6 +1,7 @@
 package com.devsos.application.exception;
 
 import jakarta.validation.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -143,6 +144,23 @@ public class GlobalExceptionHandler {
             "Rota não encontrada: " + ex.getResourcePath()
         );
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+
+    /**
+     * 409 — violação de integridade que ESCAPOU do Service (o "cinto de
+     * segurança" do banco). Ex.: segundo helper aceitando o mesmo post no
+     * mesmo instante (índice único) ou o trigger vetando self-help.
+     * <p>A mensagem é neutra: detalhes de constraint não ajudam o cliente
+     * (e podem vazar estrutura do banco).</p>
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiError> handleDataIntegrity(DataIntegrityViolationException ex) {
+        var error = ApiError.of(
+            HttpStatus.CONFLICT.value(),
+            HttpStatus.CONFLICT.getReasonPhrase(),
+            "Operação conflita com uma regra de integridade (ex.: post já em atendimento)."
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
     /**

@@ -115,6 +115,11 @@ CREATE INDEX idx_sessions_helper    ON sessions (helper_id, created_at DESC);
 CREATE INDEX idx_sessions_chat      ON sessions (chat_room_id);
 CREATE INDEX idx_sessions_status    ON sessions (status);
 
+-- Índice único: "uma corrida por vez" — 1 post só pode ter 1 sessão MATCHED
+-- ou ACTIVE. Completei/Cancelled saem do índice, permitindo nova fila depois
+-- de cancelamento.
+CREATE UNIQUE INDEX uniq_sessions_post_active ON sessions (post_id) WHERE status IN ('MATCHED', 'ACTIVE');
+
 -- ============================================================================
 -- 4) TABELA reviews
 -- ============================================================================
