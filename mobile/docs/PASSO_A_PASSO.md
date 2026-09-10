@@ -33,7 +33,7 @@ npx create-expo-app@latest devsos-mobile --template blank
 cd devsos-mobile
 
 # 3) Instala as dependências usadas pelo nosso código
-npm i axios sockjs-client stompjs
+npm i axios sockjs-client @stomp/stompjs
 npm i expo-status-bar
 
 # 4) Copie a pasta src/ deste projeto + o App.js + index.js para dentro dela

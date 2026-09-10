@@ -3,8 +3,8 @@
 App React Native (Expo) do DevSOS — o "cliente" do backend Java/Spring.
 
 - **REST**: axios (feed, posts, sessões, histórico de chat).
-- **Tempo real**: WebSocket via sockjs-client + stompjs (salas de chat por
-  corrida, assinando `/topic/chat/{chatRoomId}`).
+- **Tempo real**: WebSocket via sockjs-client + @stomp/stompjs (salas de chat
+  por corrida, assinando `/topic/chat/{chatRoomId}`).
 - **Arquitetura em camadas**: `services`, `hooks`, `components`, `screens`.
 
 ## Estrutura

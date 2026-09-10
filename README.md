@@ -1,69 +1,47 @@
 # devSOS
 
-Rede social para desenvolvedores: feed de problemas de código (estilo
-Instagram) + dinâmica de chamadas (estilo Uber). Quem sabe ajuda quem precisa,
-com chat ao vivo e avaliação mútua.
+Rede social para desenvolvedores: composta por um **feed de problemas de
+código** (estilo Instagram) e **corridas de ajuda** (estilo Uber).
+
+**A proposta:** quem sabe ajuda quem precisa. Um dev publica um bug ou desafio
+no feed; outro dev "aceita o socorro" e vira um helper na sessão — com **chat
+ao vivo**, **trechos de código** compartilhados e **avaliação mútua** no final.
+
+## Funcionalidades (MVP)
+
+- Feed com cards (tags, descrição, autor, tipo e recompensa).
+- Publicar pedido de ajuda e aceitar a corrida de outro perfil.
+- Chat em tempo real por corrida (WebSocket + STOMP), com mensagens de texto
+  ou bloco de código.
+- Autenticação via JWT (login com email e senha, senha com hash BCrypt).
+- Histórico de mensagens persistido no banco.
+
+## Stack
+
+| Camada | Tecnologia |
+|---|---|
+| Backend | Java 25 · Spring Boot 4.1.1 (REST + WebSocket) · JWT |
+| Banco | PostgreSQL 16 (Docker), DDL versionada em `database/` |
+| Frontend | React Native + Expo (axios, sockjs-client + @stomp/stompjs) |
 
 ## Estrutura do repositório
 
 ```
 .
-├── README.md
-├── database/
-│   ├── schema.sql          # DDL completo (PostgreSQL 13+)
-│   └── migrations/         # Migrações incrementais (ex.: v2 autenticação)
-├── backend/
-│   ├── pom.xml             # Spring Boot 4.1.1 · Java 25
-│   └── src/main/           # Core: perfis, feed de posts e autenticação JWT
-├── mobile/
-│   ├── src/                # App Expo em camadas (services, hooks, components, screens)
-│   └── docs/               # Passo a passo, rede e o papel do frontend
-└── docs/
-    ├── TECNICA.md        # Documentação do banco (desenvolvedores/DBA)
-    ├── EXECUTIVA.md      # Documentação do banco (leigos)
-    ├── API.md            # Documentação da API REST (devs)
-    └── EXECUTIVA_BACKEND.md  # O que o app faz (leigos)
+├── database/                 # DDL e migrações (PostgreSQL)
+├── backend/                  # API Spring Boot (perfis, feed, JWT, chat)
+├── mobile/                   # App React Native/Expo (testa o MVP no celular)
+└── docs/                     # Documentação técnica e executiva
 ```
 
-## Como rodar
+## Rodar localmente
 
-### 1. Banco (PostgreSQL via Docker)
-
-```bash
-docker run -d --name devsos-db \
-  -p 5433:5432 \
-  -e POSTGRES_USER=devsos -e POSTGRES_PASSWORD=devsos -e POSTGRES_DB=devsos \
-  postgres:16-alpine
-
-docker cp database/schema.sql devsos-db:/tmp/schema.sql
-docker exec devsos-db psql -U devsos -d devsos -v ON_ERROR_STOP=1 -f /tmp/schema.sql
-
-# Bancos criados em versões anteriores (leva o login JWT):
-docker cp database/migrations/v2_auth_password_hash.sql devsos-db:/tmp/v2.sql
-docker exec devsos-db psql -U devsos -d devsos -v ON_ERROR_STOP=1 -f /tmp/v2.sql
-
-# Bancos sem a "corrida" (índice de 1 corrida ativa por post):
-docker cp database/migrations/v3_sessions_uma_corrida_por_post.sql devsos-db:/tmp/v3.sql
-docker exec devsos-db psql -U devsos -d devsos -v ON_ERROR_STOP=1 -f /tmp/v3.sql
-
-# Bancos sem o histórico do chat ao vivo (tabela chat_messages):
-docker cp database/migrations/v4_chat_messages.sql devsos-db:/tmp/v4.sql
-docker exec devsos-db psql -U devsos -d devsos -v ON_ERROR_STOP=1 -f /tmp/v4.sql
-```
-
-### 2. Backend
-
-```bash
-cd backend
-mvn spring-boot:run
-```
-
-A API sobe em `http://localhost:8080` (documentação REST e WebSocket em
-`docs/API.md`).
+Banco (Docker) + backend + app mobile: passos completos em
+[`docs/API.md`](docs/API.md) e [`mobile/README.md`](mobile/README.md).
 
 ## Documentação
 
-- [API REST + WebSocket](docs/API.md) — rotas, JSONs, canais STOMP e guia arquitetural.
+- [API REST + WebSocket](docs/API.md) — rotas, JSONs, canais STOMP e arquitetura.
 - [Banco (técnica)](docs/TECNICA.md) — dicionário de dados, índices e concorrência.
 - [Executiva banco](docs/EXECUTIVA.md) e [Executiva backend](docs/EXECUTIVA_BACKEND.md) — sem jargão.
-- [Mobile](mobile/README.md) — app React Native/Expo (passo a passo dentro de `mobile/docs/`).
+- [Mobile](mobile/README.md) — app Expo e como gerar o APK (`mobile/docs/`).
