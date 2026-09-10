@@ -130,9 +130,28 @@ Uber entre desenvolvedores.
 
 1. **Alguém pede ajuda** (o post entra no feed, aguardando um voluntário).
 2. **Um dev aceita** — na hora, o post **sai do feed** (ninguém mais pode
-   pegar) e a corrida ganha uma **sala de chat** própria (o chat em tempo real
-   vem na próxima etapa, mas a sala já existe).
+   pegar) e a corrida ganha uma **sala de chat** própria, onde os dois vão
+   conversar ao vivo.
 3. **Os dois conversam e resolvem.** Um deles marca o início do atendimento.
+
+### A conversa ao vivo (o chat)
+
+Quando os dois devs estão na sala, eles conversam **em tempo real** — igual a
+uma **ligação telefônica**, não a uma troca de cartas. Numa carta (como são as
+outras telas do app), você pergunta, o correio entrega, e a resposta volta um
+instagram depois. No chat, as palavras saem da boca de um e caem na tela do
+outro **na hora**, sem o outro precisar ficar apertando F5.
+
+Tecnicamente, o chat usa uma **"frequência de rádio" por sala**: quem está na
+sala fica **sintonizado** no canal dela (o app chama isso de *tema da sala*) e
+só ouve o que é falado ali — e só quem está na corrida consegue sintonizar. Por
+isso dois chats diferentes não se misturam, e um estranho que tente entrar ou
+falar recebe o aviso padrão de sempre ("você não participa desta sala").
+
+> Quando alguém sai da tela e volta, a conversa não se perde: o app guarda
+> **cada frase dita** em um caderninho próprio (o "histórico"). O tempo real
+> mostra o que está acontecendo agora; o histórico mostra o que já foi dito —
+> os dois juntos é que formam o chat completo.
 4. **O atendimento termina**: quem ajudou marca como **concluído**.
    - Se a ajuda era **paga**, os **pontos do orador são transferidos** para o
      dev que ajudou — automaticamente, como um Pix. Se o orador não tem saldo,
@@ -169,7 +188,6 @@ Uber entre desenvolvedores.
 Esta etapa cobre **perfis, feed, autenticação e a corrida de socorro**.
 No futuro:
 
-- Chat em tempo real da sala (o `chatRoomId` já é criado no aceite);
 - Renovação automática do token (refresh) e "sair de todos os aparelhos";
 - Upload da foto do erro direto do celular.
 

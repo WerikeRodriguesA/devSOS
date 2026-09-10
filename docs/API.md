@@ -308,8 +308,9 @@ Resposta — `201 Created` (Status de um post: entra `IN_PROGRESS`, sai do feed)
 }
 ```
 
-> `chatRoomId`: sala de chat criada automaticamente no aceite (o chat em si é
-> item futuro do roadmap).
+> `chatRoomId`: sala de chat criada automaticamente no aceite. Os dois
+> participantes conversam nela pelo **chat em tempo real** (seção 2.9) e o
+> histórico fica disponível em `GET /api/sessions/{id}/messages` (seção 2.9.3).
 
 Erros:
 
@@ -409,6 +410,107 @@ validação), `404` (corrida não existe).
 
 Paginado (`?page=0&size=10&sort=createdAt,desc`). Exige JWT. Devolve o
 histórico da minha reputação (mesmo formato do item acima).
+
+---
+
+### 2.9 Chat em tempo real (WebSocket/STOMP)
+
+Quando existe uma corrida (`sessions`), os dois participantes conversam numa
+**sala** identificada pelo `chatRoomId` (criado no aceite). O chat tem duas
+metades:
+
+| Metade | Tecnologia | Para quê |
+|--------|------------|----------|
+| **Tempo real** | WebSocket (SockJS + STOMP) | trocar mensagens ao vivo na sala |
+| **Histórico** | REST (`GET /api/sessions/{id}/messages`) | carregar mensagens anteriores |
+
+#### 2.9.1 Conectar (handshake SockJS)
+
+O backend expõe um endpoint SockJS em `/ws-devsos`. O token JWT vai como
+parâmetro de consulta (o servidor identifica você pelo JWT, nunca pelo que o
+cliente digita):
+
+```
+ws://localhost:8080/ws-devsos/{serverId}/{sessionId}/websocket?token=<JWT>
+```
+
+Em STOMP, o primeiro frame é o `CONNECT` (com `accept-version:1.2` e
+`heart-beat:0,0`). O servidor responde `CONNECTED` com `user-name` = id do
+usuário do token.
+
+> **SockJS transporta STOMP dentro de array JSON.** No transporte
+> "raw websocket", o cliente envia `["<frame STOMP>\\u0000"]` como JSON e
+> recebe do servidor `o` (aberto), `a[...]` (frames), `\n` (batimento) e
+> `c[...]` (fechamento). Quem usar a biblioteca `@stomp/stompjs` não precisa
+> se preocupar com isso — o `webSocketFactory` cuida do envelope.
+
+#### 2.9.2 Assinar e enviar
+
+| Ação | Frame STOMP | Destino |
+|------|-------------|---------|
+| Ouvir a sala | `SUBSCRIBE` | `/topic/chat/{chatRoomId}` |
+| Mandar mensagem | `SEND` | `/app/chat/{chatRoomId}` |
+
+Corpo do `SEND` — o cliente manda **só** `content` e `type`:
+
+```json
+{ "content": "oii, roda com -Xmx512m", "type": "CHAT" }
+```
+
+O servidor preenche `senderId`, `senderNome` e `timestamp`, **persiste** a
+mensagem e republica no tópico `/topic/chat/{chatRoomId}` para **todos que
+assinaram** (inclusive o remetente):
+
+```json
+{
+  "senderId": "f8f4baef-9c56-4f52-8e46-bec223abafc6",
+  "senderNome": "Diana Java",
+  "content": "oii, roda com -Xmx512m",
+  "timestamp": "2026-09-10T12:03:28.686Z",
+  "type": "CHAT"
+}
+```
+
+- `senderId` / `senderNome`: dono do JWT da conexão (nunca confiável no corpo).
+- `timestamp`: hora do servidor (UTC) em que a mensagem chegou — os relógios de
+  celular não contam.
+- `type`: `CHAT` (texto comum) ou `CODE_SNIPPET` (trecho de código).
+
+**Autorização:** quem não participa da corrida (não é o autor do post nem o
+helper) recebe um frame `ERROR` com a mensagem `Você não participa desta sala
+de chat.` e a conexão é encerrada (`1002`) — valendo tanto para `SUBSCRIBE`
+quanto para `SEND`.
+
+#### 2.9.3 Histórico — `GET /api/sessions/{id}/messages`
+
+> **Obriga JWT.** Só participantes da corrida (autor ou helper).
+
+Lista as mensagens da sala em ordem cronológica (mesmo formato do frame):
+
+```
+GET /api/sessions/{id}/messages
+```
+
+```json
+[
+  { "senderId": "ba84f93c-...", "senderNome": "Carlos Dev", "content": "opa, bora", "timestamp": "2026-09-10T12:03:28.683Z", "type": "CHAT" },
+  { "senderId": "f8f4baef-...", "senderNome": "Diana Java", "content": "@Bean MeterRegistry", "timestamp": "2026-09-10T12:03:28.690Z", "type": "CODE_SNIPPET" }
+]
+```
+
+| HTTP | Caso |
+|------|------|
+| `200` | Histórico devolvido (vazio se ninguém falou ainda) |
+| `401` | Sem token |
+| `404` | Sessão não existe |
+| `400` | Você não participa (`Você não participa desta corrida.`) |
+
+> **Quando usar REST e quando usar WebSocket?** O WebSocket serve para o que
+> acontece **agora** (bolha nova aparecendo sem dar F5). O REST serve para o que
+> **já aconteceu** (entrar na sala e carregar o que já foi dito — quem recarrega
+> a página não perde o histórico). No DevSOS a jornada típica é: abrir a sala →
+> `GET /api/sessions/{id}/messages` para o histórico → assinar o tópico para as
+> mensagens novas em tempo real.
 
 ---
 
@@ -567,7 +669,7 @@ não muda a versão do JSON).
 - [x] Autenticação JWT e substituição do `authorId` manual pelo usuário da sessão
 - [x] Endpoints da "corrida" (`sessions`): aceitar socorro, máquina de estados,
       transferência de pontos e avaliações mútuas (`reviews`)
-- [ ] Chat em tempo real da sala (`chatRoomId` já é criado no aceite)
+- [x] Chat em tempo real da sala (WebSocket/STOMP + histórico em `chat_messages`)
 - [ ] Refresh token / logout forçado (revogação)
 - [ ] Upload real de prints (S3/Cloudinary) em vez de `mediaUrl`
 - [ ] Limite de tamanho do body no `POST /api/posts`

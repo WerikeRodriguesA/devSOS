@@ -42,6 +42,10 @@ docker exec devsos-db psql -U devsos -d devsos -v ON_ERROR_STOP=1 -f /tmp/v2.sql
 # Bancos sem a "corrida" (índice de 1 corrida ativa por post):
 docker cp database/migrations/v3_sessions_uma_corrida_por_post.sql devsos-db:/tmp/v3.sql
 docker exec devsos-db psql -U devsos -d devsos -v ON_ERROR_STOP=1 -f /tmp/v3.sql
+
+# Bancos sem o histórico do chat ao vivo (tabela chat_messages):
+docker cp database/migrations/v4_chat_messages.sql devsos-db:/tmp/v4.sql
+docker exec devsos-db psql -U devsos -d devsos -v ON_ERROR_STOP=1 -f /tmp/v4.sql
 ```
 
 ### 2. Backend
@@ -51,7 +55,8 @@ cd backend
 mvn spring-boot:run
 ```
 
-A API sobe em `http://localhost:8080` (documentação em `docs/API.md`).
+A API sobe em `http://localhost:8080` (documentação REST e WebSocket em
+`docs/API.md`).
 
 ## Documentação
 

@@ -4,6 +4,7 @@ import com.devsos.domain.session.SessionEntity;
 import com.devsos.domain.session.SessionStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -29,6 +30,16 @@ import java.util.UUID;
 public interface SessionRepository extends JpaRepository<SessionEntity, UUID> {
 
     Optional<SessionEntity> findByPostIdAndStatusIn(UUID postId, Collection<SessionStatus> statuses);
+
+    /**
+     * Sala de chat única por corrida — usado pelo chat para autorizar
+     * participantes. O {@code @EntityGraph} carrega {@code post.author} e
+     * {@code helper} na MESMA query porque este finder roda fora de transação
+     * (interceptor de canal do WebSocket, sem OpenSessionInView) — sem o fetch
+     * eager, acessar {@code session.getPost()} dispararia LazyInitializationException.
+     */
+    @EntityGraph(attributePaths = {"post.author", "helper"})
+    Optional<SessionEntity> findByChatRoomId(UUID chatRoomId);
 
     Page<SessionEntity> findByHelperId(UUID helperId, Pageable pageable);
 
