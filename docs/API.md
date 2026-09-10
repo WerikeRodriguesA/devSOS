@@ -1,4 +1,4 @@
-# DevSOS — API do Backend (Perfis, Feed e Autenticação)
+# DevSOS — API do Backend (Perfis, Feed, Autenticação e Corridas)
 
 > Público-alvo: desenvolvedores (front, mobile, back).
 > Versão do contrato: Spring Boot 4.1.1 · Java 25 · PostgreSQL 16
@@ -254,6 +254,164 @@ Erros:
 
 ---
 
+### 2.7 Corridas (`sessions`) — a dinâmica "Uber" do DevSOS
+
+> **Todas as rotas de corrida exigem JWT.** O usuário logado é o **helper** no
+> aceite e o "participante" no restante. Corridas de terceiros são invisíveis
+> (o endpoint devolve `400` "Você não participa desta corrida.").
+
+#### O ciclo de vida de uma corrida
+
+```
+   POST /api/sessions      PATCH → ACTIVE       PATCH → COMPLETED
+        │                       │                    │
+        ▼                       ▼                    ▼
+     [MATCHED] ──────────▶ [ACTIVE] ──────────▶ [COMPLETED]
+        │                       │
+        └────────── PATCH → CANCELLED ◀─────────┘
+                    (post volta a OPEN)
+```
+
+- **MATCHED** — aceite: o helper pega o post (que sai do feed).
+- **ACTIVE** — atendimento em curso (tanto faz quem dispara).
+- **COMPLETED** — só o **helper** conclui; transfere a recompensa e resolve o post.
+- **CANCELLED** — qualquer participante cancela; o post volta ao feed.
+
+Regras extras: 1 corrida ativa por post (barrada no Service **e** no banco por
+índice único); não dá para aceitar o próprio post; só dá para CONCLUIR partindo
+de ACTIVE (transição de MATCHED direto é `400`).
+
+#### 2.7.1 `POST /api/sessions` — Aceitar socorro (código 201)
+
+Corpo de envio (o `helper` vem do token):
+
+```json
+{ "postId": "b1b072c6-e366-4af8-b0a5-37d0abcad78c" }
+```
+
+Resposta — `201 Created` (Status de um post: entra `IN_PROGRESS`, sai do feed):
+
+```json
+{
+  "id": "076c04cf-4a93-4c89-b6ec-d2a73729a1c4",
+  "postId": "b1b072c6-e366-4af8-b0a5-37d0abcad78c",
+  "postTitulo": "Projeto travado na fila do RabbitMQ",
+  "recompensaValor": 30.00,
+  "status": "MATCHED",
+  "chatRoomId": "2cc00dd9-5021-484b-a070-d4e404d8b3ee",
+  "authorId": "ba84f93c-7b95-4872-8eb1-342b5116d1bc",
+  "authorNome": "Carlos Dev",
+  "helperId": "f8f4baef-9c56-4f52-8e46-bec223abafc6",
+  "helperNome": "Diana Java",
+  "completedAt": null,
+  "createdAt": "2026-09-10T01:30:27.089800Z"
+}
+```
+
+> `chatRoomId`: sala de chat criada automaticamente no aceite (o chat em si é
+> item futuro do roadmap).
+
+Erros:
+
+| HTTP | Caso |
+|------|------|
+| `401` | Sem token |
+| `400` | Post não está `OPEN` / já tem corrida ativa / você é o autor |
+| `404` | Post (ou usuário logado) não existe |
+| `409` | Corrida de concorrência: outro helper aceitou no mesmo instante (índice único) |
+
+#### 2.7.2 `PATCH /api/sessions/{id}` — Avançar a corrida (código 200)
+
+> **Obriga JWT.** Só participantes da corrida (autor ou helper).
+
+Corpo de envio:
+
+```json
+{ "status": "ACTIVE" }
+```
+
+| `status` | Quem pode | Transição permitida | Efeito |
+|----------|-----------|--------------------|---------|
+| `ACTIVE` | qualq. participante | de `MATCHED` | mantém o post fora do feed |
+| `COMPLETED` | **só o helper** | de `ACTIVE` | transfere pontos, resolve o post, grava `completedAt` |
+| `CANCELLED` | qualq. participante | de `MATCHED`/`ACTIVE` | post volta a `OPEN` |
+
+`COMPLETED` em post **PAID**:
+- `autor.saldo_pontos -= recompensa` e `helper.saldo_pontos += recompensa`
+  (a própria DDL garante saldo não negativo — `CHECK`).
+- Se o autor não tiver saldo: `400` "O autor não tem saldo suficiente...".
+- Post `FREE` não movimenta pontos (recompensa = 0).
+
+Erros: `401`, `400` (não participa / transição ilegal / status alvo inválido ou
+já atual), `404`.
+
+#### 2.7.3 `GET /api/sessions` — Minhas corridas (código 200)
+
+Onde você participa como **autor** ou **helper** — paginado
+(`?page=0&size=10&sort=createdAt,desc`). Exige JWT. Formato: `PagedModel`
+com itens iguais ao do aceite.
+
+#### 2.7.4 `GET /api/sessions/{id}` — Detalhe de uma corrida (código 200)
+
+Exige JWT e participação. Terceiros recebem `400` "Você não participa desta
+corrida." (a existência da corrida não é revelada).
+
+---
+
+### 2.8 Avaliações mútuas (`reviews`) — pós-corrida
+
+> **Todas as rotas exigem JWT.** O **avaliador** é o usuário logado e o
+> **avaliado** é SEMPRE o outro lado da corrida (autor ↔ helper) — o cliente
+> não escolhe quem avaliar (isso impede que se avalie estranhos).
+
+#### 2.8.1 `POST /api/reviews` — Avaliar a corrida (código 201)
+
+Requisitos: corrida `COMPLETED`, você participa dela e ainda não avaliou
+(1 review por pessoa por corrida).
+
+Corpo de envio:
+
+```json
+{
+  "sessionId": "076c04cf-4a93-4c89-b6ec-d2a73729a1c4",
+  "nota": 5,
+  "comentario": "Resolveu o deadlock rapidinho, muito claro."
+}
+```
+
+| Campo | Tipo | Obrigatório | Regras |
+|-------|------|------------|--------|
+| `sessionId` | `UUID` | Sim | Corrida concluída |
+| `nota` | `number` | Sim | inteiro 1–5 |
+| `comentario` | `string` | Não | máx. 1000 caracteres |
+
+Resposta — `201 Created` (média do avaliado já recalculada pelo trigger do banco):
+
+```json
+{
+  "id": "380c8f31-21ea-4566-983c-da888e571512",
+  "sessionId": "076c04cf-4a93-4c89-b6ec-d2a73729a1c4",
+  "reviewerId": "f8f4baef-9c56-4f52-8e46-bec223abafc6",
+  "reviewerNome": "Diana Java",
+  "reviewedId": "ba84f93c-7b95-4872-8eb1-342b5116d1bc",
+  "reviewedNome": "Carlos Dev",
+  "nota": 5,
+  "comentario": "Resolveu o deadlock rapidinho, muito claro.",
+  "mediaAvaliacoesDoAvaliado": 5.00,
+  "createdAt": "2026-09-10T01:31:36.022734Z"
+}
+```
+
+Erros: `401`, `400` (corrida não concluída / você não participa / já avaliou /
+validação), `404` (corrida não existe).
+
+#### 2.8.2 `GET /api/reviews` — Avaliações que EU recebi (código 200)
+
+Paginado (`?page=0&size=10&sort=createdAt,desc`). Exige JWT. Devolve o
+histórico da minha reputação (mesmo formato do item acima).
+
+---
+
 ## 3. Como rodar
 
 ### Pré-requisitos
@@ -317,6 +475,7 @@ Mapa de exceções → HTTP (veja `GlobalExceptionHandler`):
 | `MethodArgumentTypeMismatchException` | `400` |
 | `MissingServletRequestParameterException` | `400` |
 | `NoResourceFoundException` | `404` |
+| `DataIntegrityViolationException` | `409` (rede de segurança do banco) |
 | **Sem token / token inválido** (filtro de segurança) | `401` |
 | **Token válido, sem permissão** (filtro de segurança) | `403` |
 | Qualquer outra `Exception` | `500` (mensagem neutra) |
@@ -406,8 +565,10 @@ não muda a versão do JSON).
 
 - [x] Cadastro de usuários (`POST /api/auth/register`) + login (`POST /api/auth/login`)
 - [x] Autenticação JWT e substituição do `authorId` manual pelo usuário da sessão
+- [x] Endpoints da "corrida" (`sessions`): aceitar socorro, máquina de estados,
+      transferência de pontos e avaliações mútuas (`reviews`)
+- [ ] Chat em tempo real da sala (`chatRoomId` já é criado no aceite)
 - [ ] Refresh token / logout forçado (revogação)
-- [ ] Endpoints da "corrida" (`sessions`): aceitar socorro, sala de chat
 - [ ] Upload real de prints (S3/Cloudinary) em vez de `mediaUrl`
 - [ ] Limite de tamanho do body no `POST /api/posts`
 - [ ] Flyway para versionar a DDL junto do deploy

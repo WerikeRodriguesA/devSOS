@@ -38,6 +38,10 @@ docker exec devsos-db psql -U devsos -d devsos -v ON_ERROR_STOP=1 -f /tmp/schema
 # Bancos criados em versões anteriores (leva o login JWT):
 docker cp database/migrations/v2_auth_password_hash.sql devsos-db:/tmp/v2.sql
 docker exec devsos-db psql -U devsos -d devsos -v ON_ERROR_STOP=1 -f /tmp/v2.sql
+
+# Bancos sem a "corrida" (índice de 1 corrida ativa por post):
+docker cp database/migrations/v3_sessions_uma_corrida_por_post.sql devsos-db:/tmp/v3.sql
+docker exec devsos-db psql -U devsos -d devsos -v ON_ERROR_STOP=1 -f /tmp/v3.sql
 ```
 
 ### 2. Backend

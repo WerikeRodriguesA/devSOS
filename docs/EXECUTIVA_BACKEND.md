@@ -1,7 +1,8 @@
 # DevSOS — O que o app faz (versão para leigos)
 
 > Este documento explica — sem nenhum termo técnico — o que a "Temporada 1"
-> do DevSOS faz: mostrar o feed de dúvidas e o perfil dos devs.
+> do DevSOS faz: mostrar o feed de dúvidas, o perfil dos devs, a conta/login
+> e a **corrida de socorro** (pedir ajuda, ser aceito e se avaliar).
 
 ---
 
@@ -119,11 +120,56 @@ A nova "temporada" adicionou **criar conta e entrar** — o DevSOS agora sabe
 
 ---
 
-## 6. O que vem depois
+## 6. A "corrida" de socorro (aceitar, atender e avaliar)
 
-Esta etapa cobre **perfis, feed e autenticação**. No futuro:
+A parte mais legal do DevSOS: quando um dev publica uma dúvida no feed, outro
+dev pode **aceitar o socorro** — e aí nasce uma **corrida**, quase um pedido de
+Uber entre desenvolvedores.
 
-- O botão "Aceitar Socorro" (criar a "corrida"/sala de chat);
+### O ciclo da corrida, sem termos técnicos
+
+1. **Alguém pede ajuda** (o post entra no feed, aguardando um voluntário).
+2. **Um dev aceita** — na hora, o post **sai do feed** (ninguém mais pode
+   pegar) e a corrida ganha uma **sala de chat** própria (o chat em tempo real
+   vem na próxima etapa, mas a sala já existe).
+3. **Os dois conversam e resolvem.** Um deles marca o início do atendimento.
+4. **O atendimento termina**: quem ajudou marca como **concluído**.
+   - Se a ajuda era **paga**, os **pontos do orador são transferidos** para o
+     dev que ajudou — automaticamente, como um Pix. Se o orador não tem saldo,
+     o sistema avisa antes e não deixa concluir.
+5. **Cada um avalia o outro** (nota de 1 a 5 + comentário). A **nota média**
+   de cada dev é recalculada na hora — dá para ver no perfil.
+6. **Cancelamento**: a qualquer momento (antes de concluir) alguém pode
+   **desistir** — o post volta ao feed e outro dev pode tentar.
+
+### As regrinhas do salão (que o sistema garante sozinho)
+
+- **Só uma corrida por post** — o post some do feed enquanto está em
+  atendimento (e, se dois devs clicarem "aceitar" no mesmo instante, o sistema
+  deixa só um passar).
+- **Ninguém aceita o próprio pedido** — o sistema barra (mesmo se o app
+  tentar "falar por fora").
+- **Só quem está na corrida enxerga a corrida** — terceiros nem sabem que ela
+  existe.
+- **Só conclui quem ajudou** — o dono do post não pode marcar "pronto" no
+  lugar do voluntário.
+- **Só avalia depois de terminar** — e cada um avalia **uma única vez** por
+  corrida, sempre o **outro lado** (ninguém escolhe avaliar estranhos).
+- **Post pago exige saldo** — se o orador não tem pontos para pagar a
+  recompensa, a conclusão é bloqueada.
+
+> Assim como nas outras telas, quando algum pedido quebra uma dessas regras o
+> app responde **na mesma linguagem de sempre** (o "supervisor de
+> reclamações" padroniza tudo), explicando o que aconteceu.
+
+---
+
+## 7. O que vem depois
+
+Esta etapa cobre **perfis, feed, autenticação e a corrida de socorro**.
+No futuro:
+
+- Chat em tempo real da sala (o `chatRoomId` já é criado no aceite);
 - Renovação automática do token (refresh) e "sair de todos os aparelhos";
 - Upload da foto do erro direto do celular.
 
