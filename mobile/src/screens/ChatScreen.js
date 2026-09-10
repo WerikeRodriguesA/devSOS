@@ -39,7 +39,7 @@ import { useChatMessages } from '../hooks/useChatMessages';
  * @param {Object} props.params    { sessionId, chatRoomId, titulo }
  */
 export default function ChatScreen({ navegar, params }) {
-  const { sessionId, chatRoomId, titulo } = params;
+  const { sessionId, chatRoomId, titulo, voltarPara } = params;
   const { usuario, token } = useAuth();
 
   const { mensagens, carregando, conectado, erro, enviar } = useChatMessages({
@@ -73,7 +73,9 @@ export default function ChatScreen({ navegar, params }) {
     >
       {/* Cabeçalho com o título da corrida + status da conexão */}
       <View style={styles.header}>
-        <Pressable onPress={() => navegar(require('./FeedScreen').default)}>
+        <Pressable
+          onPress={() => navegar(voltarPara ? voltarPara : require('./FeedScreen').default)}
+        >
           <Text style={styles.voltar}>voltar</Text>
         </Pressable>
         <Text style={styles.titulo} numberOfLines={1}>

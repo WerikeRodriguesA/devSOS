@@ -149,4 +149,75 @@ export const sessionsApi = {
     const { data } = await api.get(`/api/sessions/${sessionId}/messages`);
     return data; // array de ChatMessageDTO
   },
+
+  /**
+   * Minhas corridas — GET /api/sessions?sort=createdAt,desc
+   *
+   * Retorna TODAS as corridas do usuário logado (como autor OU como helper) —
+   * o backend não filtra por status; a ordem vem da paginação Spring.
+   *
+   * ANALOGIA: SELECT * FROM sessions WHERE author_id = :eu OR helper_id = :eu
+   * ORDER BY created_at DESC (com LIMIT/OFFSET via page/size).
+   */
+  minhas: async (page = 0, size = 50) => {
+    const { data } = await api.get('/api/sessions', {
+      params: { page, size, sort: 'createdAt,desc' },
+    });
+    return data.content; // array de SessionResponseDTO
+  },
+};
+
+/**
+ * Perfil do usuário — GET /api/users/{id} (rota pública).
+ *
+ * O login devolve o AuthResponseDTO.usuario, mas aqui a gente "atualiza" o
+ * perfil do banco (média de avaliações muda conforme os reviews chegam).
+ *
+ * ANALOGIA: é um SELECT fresh na tabela users — em vez de usar o cache que o
+ * app guardou no momento do login.
+ */
+export const usersApi = {
+  perfil: async (userId) => {
+    const { data } = await api.get(`/api/users/${userId}`);
+    return data; // UserProfileResponseDTO
+  },
+};
+
+/**
+ * Avaliações (reputação) — o "historico de avaliacoes do dev".
+ *
+ * - listar: GET /api/reviews  -> reviews RECEBIDOS pelo usuário logado.
+ * - avaliar: POST /api/reviews -> avalia a corrida concluída; o avaliado é
+ *   SEMPRE o outro lado (helper ou autor), decidido pelo backend.
+ *
+ * ANALOGIA: como uma tabela reviews com FK para quem avaliou e quem foi
+ * avaliado — aqui o cliente nunca escolhe o alvo (segurança no backend).
+ */
+export const reviewsApi = {
+  listar: async (page = 0, size = 50) => {
+    const { data } = await api.get('/api/reviews', {
+      params: { page, size, sort: 'createdAt,desc' },
+    });
+    return data.content; // array de ReviewResponseDTO
+  },
+
+  avaliar: async ({ sessionId, nota, comentario = '' }) => {
+    const { data } = await api.post('/api/reviews', { sessionId, nota, comentario });
+    return data; // ReviewResponseDTO (com mediaAvaliacoesDoAvaliado)
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Rótulos de exibição (não vêm no JSON)
+// ---------------------------------------------------------------------------
+
+/**
+ * Status da corrida -> rótulo amigável em PT-BR (o backend manda o enum EN).
+ * ANALOGIA: mesma função de um DisplayLabel/EnumConverter do backend.
+ */
+export const STATUS_CORRIDA = {
+  MATCHED: { rotulo: 'Combinada', cor: '#7C3AED' },
+  ACTIVE: { rotulo: 'Em andamento', cor: '#2563EB' },
+  COMPLETED: { rotulo: 'Concluída', cor: '#059669' },
+  CANCELLED: { rotulo: 'Cancelada', cor: '#6B7280' },
 };

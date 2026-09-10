@@ -3,9 +3,11 @@
 App React Native (Expo) do DevSOS — o "cliente" do backend Java/Spring.
 
 - **REST**: axios (feed, posts, sessões, histórico de chat).
-- **Tempo real**: WebSocket via sockjs-client + stompjs (salas de chat por
-  corrida, assinando `/topic/chat/{chatRoomId}`).
+- **Tempo real**: WebSocket via sockjs-client + @stomp/stompjs (salas de chat
+  por corrida, assinando `/topic/chat/{chatRoomId}`).
 - **Arquitetura em camadas**: `services`, `hooks`, `components`, `screens`.
+- **Conta**: perfil com pontos/média de avaliação, "Minhas corridas",
+  avaliação mútua (1–5 + comentário) e logout local.
 
 ## Estrutura
 
@@ -17,19 +19,24 @@ mobile/
 ├── src/
 │   ├── config.js             # IP/URL do backend (o "application.properties")
 │   ├── services/
-│   │   ├── api.js            # axios + token + chamadas REST
+│   │   ├── api.js            # axios + token + chamadas REST (feed, posts,
+│   │   │                     #   sessions, usuários, reviews)
 │   │   └── socket.js         # SockJS + STOMP (chat em tempo real)
 │   ├── hooks/
-│   │   ├── AuthContext.js    # contexto global de login (singleton do front)
+│   │   ├── AuthContext.js    # contexto global de login/logout (singleton)
 │   │   └── useChatMessages.js# ciclo de vida do chat (histórico + socket)
 │   ├── components/
+│   │   ├── Avatar.js         # foto ou iniciais (fallback sem URL)
 │   │   ├── PostCard.js       # card do feed (tags, descrição, aceitar)
-│   │   └── MessageBubble.js  # balão de mensagem (texto vs. código)
+│   │   ├── MessageBubble.js  # balão de mensagem (texto vs. código)
+│   │   ├── RatingStars.js    # estrelas 1–5 (exibir ou avaliar)
+│   │   └── AvaliarCorridaModal.js  # formulário de avaliação mútua
 │   └── screens/
 │       ├── LoginScreen.js
-│       ├── FeedScreen.js
+│       ├── FeedScreen.js     # + acesso ao Perfil
 │       ├── CreatePostScreen.js
-│       └── ChatScreen.js
+│       ├── ChatScreen.js     # volta para a tela de origem
+│       └── PerfilScreen.js   # perfil + abas Corridas/Avaliações + Sair
 └── docs/
     ├── PASSO_A_PASSO.md          # como rodar + gerar o APK
     ├── TROUBLESHOOTING_REDE.md   # problemas de rede (localhost vs IP)

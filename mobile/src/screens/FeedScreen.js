@@ -77,12 +77,20 @@ export default function FeedScreen({ navegar }) {
       {/* Cabeçalho */}
       <View style={styles.header}>
         <Text style={styles.headerTitulo}>Feed</Text>
-        <Pressable
-          style={styles.botaoNovo}
-          onPress={() => navegar(require('./CreatePostScreen').default)}
-        >
-          <Text style={styles.botaoNovoTexto}>+ Postar</Text>
-        </Pressable>
+        <View style={styles.headerAcoes}>
+          <Pressable
+            style={styles.botaoPerfil}
+            onPress={() => navegar(require('./PerfilScreen').default)}
+          >
+            <Text style={styles.botaoPerfilTexto}>Perfil</Text>
+          </Pressable>
+          <Pressable
+            style={styles.botaoNovo}
+            onPress={() => navegar(require('./CreatePostScreen').default)}
+          >
+            <Text style={styles.botaoNovoTexto}>+ Postar</Text>
+          </Pressable>
+        </View>
       </View>
 
       {/* Estado de erro (não derruba a tela — só mostra o problema) */}
@@ -136,6 +144,15 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   headerTitulo: { fontSize: 24, fontWeight: '800', color: '#4B3869' },
+  headerAcoes: { flexDirection: 'row', gap: 8 },
+  botaoPerfil: {
+    borderWidth: 1,
+    borderColor: '#7C3AED',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  botaoPerfilTexto: { color: '#7C3AED', fontWeight: '700', fontSize: 14 },
   botaoNovo: {
     backgroundColor: '#7C3AED',
     borderRadius: 8,
