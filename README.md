@@ -23,6 +23,7 @@ ao vivo**, **trechos de código** compartilhados e **avaliação mútua** no fin
 | Backend | Java 25 · Spring Boot 4.1.1 (REST + WebSocket) · JWT |
 | Banco | PostgreSQL 16 (Docker), DDL versionada em `database/` |
 | Frontend | React Native + Expo (axios, sockjs-client + @stomp/stompjs) |
+| Dev Client (interno) | Vite + JS vanilla (REST + SockJS/STOMP) — só para testes |
 
 ## Estrutura do repositório
 
@@ -31,6 +32,7 @@ ao vivo**, **trechos de código** compartilhados e **avaliação mútua** no fin
 ├── database/                 # DDL e migrações (PostgreSQL)
 ├── backend/                  # API Spring Boot (perfis, feed, JWT, chat)
 ├── mobile/                   # App React Native/Expo (testa o MVP no celular)
+├── dev-client/               # Dev Client Web (ferramenta interna de teste)
 └── docs/                     # Documentação técnica e executiva
 ```
 
@@ -45,3 +47,5 @@ Banco (Docker) + backend + app mobile: passos completos em
 - [Banco (técnica)](docs/TECNICA.md) — dicionário de dados, índices e concorrência.
 - [Executiva banco](docs/EXECUTIVA.md) e [Executiva backend](docs/EXECUTIVA_BACKEND.md) — sem jargão.
 - [Mobile](mobile/README.md) — app Expo e como gerar o APK (`mobile/docs/`).
+- [Dev Client Web](dev-client/README.md) — ferramenta interna de teste no
+  navegador (abas, chat em tempo real e log de requisições).
