@@ -21,3 +21,8 @@ desktop.ini
 
 # Logs
 *.log
+
+# Dev Client (Vite)
+dev-client/node_modules/
+dev-client/dist/
+dev-client/.env.local

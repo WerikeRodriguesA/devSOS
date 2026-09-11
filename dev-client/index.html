@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>devSOS · Dev Client Web</title>
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <header id="app-header">
+    <div class="brand">
+      <h1>devSOS <span class="tag">Dev Client</span></h1>
+      <p class="subtitle">bancada de testes do backend — ferramenta interna (não é o produto)</p>
+    </div>
+    <div class="header-sec">
+      <label>URL do backend
+        <input id="api-url" type="text" spellcheck="false" placeholder="http://localhost:8080" />
+      </label>
+      <button id="api-url-apply" class="ghost" title="Aplicar nova URL do backend">Aplicar</button>
+    </div>
+    <div class="header-sec" id="session-badge"></div>
+  </header>
+
+  <main id="app-main">
+    <nav id="app-nav">
+      <button data-tab="auth" class="nav-btn active">Autenticação</button>
+      <button data-tab="feed" class="nav-btn">Feed</button>
+      <button data-tab="sessions" class="nav-btn">Corridas</button>
+      <button data-tab="chat" class="nav-btn">Chat</button>
+      <button data-tab="reviews" class="nav-btn">Avaliações</button>
+    </nav>
+
+    <section id="panes">
+      <div id="pane-auth" class="pane active"></div>
+      <div id="pane-feed" class="pane"></div>
+      <div id="pane-sessions" class="pane"></div>
+      <div id="pane-chat" class="pane"></div>
+      <div id="pane-reviews" class="pane"></div>
+    </section>
+
+    <aside id="request-log-pane">
+      <h2>Requisições</h2>
+      <div id="request-log"></div>
+      <button id="log-clear" class="ghost tiny">limpar</button>
+    </aside>
+  </main>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
