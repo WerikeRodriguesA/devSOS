@@ -39,6 +39,10 @@ ao vivo**, **trechos de código** compartilhados e **avaliação mútua** no fin
 Banco (Docker) + backend + app mobile: passos completos em
 [`docs/API.md`](docs/API.md) e [`mobile/README.md`](mobile/README.md).
 
+> As tabelas são criadas/atualizadas sozinhas pelo backend no boot (migrações
+> versionadas com Flyway em `backend/src/main/resources/db/migration/`) — não
+> é preciso rodar scripts de banco à mão.
+
 ## Documentação
 
 - [API REST + WebSocket](docs/API.md) — rotas, JSONs, canais STOMP e arquitetura.

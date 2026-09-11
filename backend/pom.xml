@@ -80,6 +80,24 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Flyway: migrações versionadas de schema (DDL) aplicadas no boot.
+             Sem depender de rodar scripts à mão — o banco fica SEMPRE no
+             estado esperado pelo código (igual a migrações em Rails/Laravel).
+             No Spring Boot 4, a auto-configuração do Flyway saiu do
+             spring-boot-starter e vive no módulo spring-boot-flyway. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-flyway</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
