@@ -518,7 +518,7 @@ GET /api/sessions/{id}/messages
 
 ### Pré-requisitos
 - Java 25
-- PostgreSQL 16 (container: `devsos-db` na porta `5433`) — veja `database/schema.sql`
+- PostgreSQL 16 — container `devsos-db` na porta `5433` (a DDL é aplicada sozinha pelo Flyway no boot, sem script manual)
 
 ```bash
 # dentro de backend/
@@ -527,9 +527,13 @@ mvn spring-boot:run          # ou: ./mvnw spring-boot:run
 
 A aplicação sobe em `http://localhost:8080`.
 
-> O banco usa `spring.jpa.hibernate.ddl-auto=none`: **a DDL não é gerada pela
-> aplicação** — rode primeiro o `database/schema.sql` e, se estiver subindo
-> sobre um banco antigo, aplique também `database/migrations/v2_auth_password_hash.sql`.
+> O banco usa `spring.jpa.hibernate.ddl-auto=none`: **a DDL não é gerada pelo
+> Hibernate** — ela é versionada e aplicada automaticamente pelo **Flyway** no
+> boot (`backend/src/main/resources/db/migration/`). Em banco novo/vazio o
+> backend cria tudo do zero. Num banco antigo (criado à mão antes do Flyway,
+> como o `devsos-db` local) ele faz *baseline*: valida o schema atual, assume a
+> versão 1 e passa a rodar apenas as próximas migrações por cima — os dados
+> existentes não são tocados.
 
 ### Autenticação local
 
@@ -673,5 +677,5 @@ não muda a versão do JSON).
 - [ ] Refresh token / logout forçado (revogação)
 - [ ] Upload real de prints (S3/Cloudinary) em vez de `mediaUrl`
 - [ ] Limite de tamanho do body no `POST /api/posts`
-- [ ] Flyway para versionar a DDL junto do deploy
+- [x] Flyway para versionar a DDL junto do deploy (migrações em `backend/src/main/resources/db/migration/`, aplicadas no boot)
 - [ ] Integração com OpenAPI/Swagger (UI em `/swagger-ui`)

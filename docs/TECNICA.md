@@ -344,31 +344,42 @@ O cenário perigoso: dois especialistas clicam "Aceitar Socorro" ao mesmo tempo.
 
 ---
 
-## 7. Como executar o script
+## 7. Como a DDL versionada é aplicada
 
-### Via `psql`
-
-```bash
-createdb devsos
-psql -d devsos -f database/schema.sql
-```
-
-### Via Docker (um passo)
+Desde a PR do Flyway, o banco **não é mais criado na mão**: o backend roda as
+migrações sozinho no boot. A única coisa que você precisa é um PostgreSQL com
+o banco de dados criado (vazio):
 
 ```bash
 docker run -d --name devsos-db \
   -e POSTGRES_PASSWORD=devsos \
   -e POSTGRES_DB=devsos \
-  -p 5432:5432 postgres:16
-psql -h localhost -U postgres -d devsos -f database/schema.sql
+  -p 5433:5432 postgres:16
 ```
+
+No primeiro boot o Flyway cria a tabela `flyway_schema_history` e aplica todas
+as migrações de `backend/src/main/resources/db/migration/` (hoje apenas o
+`V1__schema_inicial.sql`, que contém o schema completo).
+
+### Banco de dev antigo (já tinha tabelas antes do Flyway)
+
+O `devsos-db` local foi criado aplicando o `schema.sql` à mão, então o app sobe
+com `spring.flyway.baseline-on-migrate=true` e `baseline-version=1`: o Flyway
+valida o schema existente contra o V1, registra esse *baseline* na versão 1 e
+**não re-executa nada** — só as migrações futuras (V2 em diante) rodam. Os
+dados existentes permanecem intactos.
+
+> **Regra daqui pra frente:** qualquer mudança de schema = nova migração
+> `V{n+1}__descricao.sql` em `backend/src/main/resources/db/migration/`.
+> Atualize também `database/schema.sql` (snapshot documental do estado final)
+> e este arquivo.
 
 ### Verificação
 
 ```sql
 \dt+                            -- lista tabelas e tamanhos
 \d users                        -- detalha a estrutura de uma tabela
-SELECT * FROM users LIMIT 5;
+SELECT version, type, success FROM flyway_schema_history ORDER BY installed_rank;
 ```
 
 ---
@@ -377,9 +388,10 @@ SELECT * FROM users LIMIT 5;
 
 - [ ] Decidir política de múltiplos helpers ⇒ ativar `uniq_sessions_post_active`.
 - [ ] Decidir entre `ON DELETE CASCADE` e **soft-delete** para `posts`.
-- [ ] Adicionar `docs.md` de API (endpoints REST expondo este schema).
+- [x] Documentação de API (`docs/API.md`) expondo os endpoints REST sobre este schema.
 - [ ] Avaliar migração para UUIDv7 se a escrita no feed for intensa.
 - [x] Tabela `chat_messages` (histórico das salas de chat) — criada em `v4_chat_messages.sql`.
+- [x] DDL versionada via Flyway (`spring-boot-flyway` + `db/migration/`, aplicadas no boot).
 
 ---
 
