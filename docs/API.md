@@ -247,6 +247,7 @@ Erros:
 
 | HTTP | Caso |
 |------|------|
+| `413` | Corpo maior que o limite (`devsos.posts.max-body-bytes`, default **64 KiB**) — barrado na porta, antes mesmo do JWT |
 | `401` | Sem token (ou token inválido/expirado) |
 | `400` | Validação de formulário (campo ausente/curto) |
 | `400` | Regra de negócio (`FREE` com recompensa, `PAID` sem recompensa) |
@@ -676,6 +677,6 @@ não muda a versão do JSON).
 - [x] Chat em tempo real da sala (WebSocket/STOMP + histórico em `chat_messages`)
 - [ ] Refresh token / logout forçado (revogação)
 - [ ] Upload real de prints (S3/Cloudinary) em vez de `mediaUrl`
-- [ ] Limite de tamanho do body no `POST /api/posts`
+- [x] Limite de tamanho do body no `POST /api/posts` (`MaxRequestBodySizeFilter`, 413 em `devsos.posts.max-body-bytes` = 64 KiB default)
 - [x] Flyway para versionar a DDL junto do deploy (migrações em `backend/src/main/resources/db/migration/`, aplicadas no boot)
 - [ ] Integração com OpenAPI/Swagger (UI em `/swagger-ui`)
