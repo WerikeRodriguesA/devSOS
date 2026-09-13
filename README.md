@@ -47,6 +47,9 @@ Banco (Docker) + backend + app mobile: passos completos em
 
 ## Documentação
 
+- [Como testar (guia prático)](docs/COMO_TESTAR.md) — do zero até o fluxo
+  completo pelo **Web Client** em `http://localhost:5173` (cadastro, feed,
+  corrida, chat e avaliações) + como testar no celular e via curl.
 - [API REST + WebSocket](docs/API.md) — rotas, JSONs, canais STOMP e arquitetura.
 - [Banco (técnica)](docs/TECNICA.md) — dicionário de dados, índices e concorrência.
 - [Executiva banco](docs/EXECUTIVA.md) e [Executiva backend](docs/EXECUTIVA_BACKEND.md) — sem jargão.
