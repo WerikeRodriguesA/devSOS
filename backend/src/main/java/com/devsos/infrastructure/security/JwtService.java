@@ -30,7 +30,10 @@ import java.util.UUID;
  * Se um token nunca expirasse e vazasse, o atacante teria acesso eterno.
  * Por isso geramos um tempo de vida curto ({@code jwt.expiracao-segundos}) e
  * exigimos o token no cabeçalho {@code Authorization: Bearer <token>}.
- * (Refresh tokens / logout forçado entram na próxima iteração.)
+ * Quando ele expira, o cliente renova via refresh token
+ * ({@code POST /api/auth/refresh}) — veja {@code RefreshTokenService}.
+ * (O refresh token é o lado REVOGÁVEL da autenticação; um JWT em si é
+ * stateless e não pode ser revogado antes de expirar.)
  */
 @Service
 public class JwtService {
