@@ -4,6 +4,7 @@ import com.devsos.application.dto.post.PostCreateRequestDTO;
 import com.devsos.application.dto.post.PostResponseDTO;
 import com.devsos.application.service.PostService;
 import com.devsos.infrastructure.security.IdUsuarioLogado;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -45,6 +46,7 @@ public class PostController {
      * GET /api/posts?page=0&size=10&sort=createdAt,desc
      * Feed paginado de posts OPEN, mais recentes primeiro.
      */
+    @SecurityRequirements(value = {}) // feed é público como o Instagram
     @GetMapping
     public ResponseEntity<PagedModel<PostResponseDTO>> listarFeed(
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {

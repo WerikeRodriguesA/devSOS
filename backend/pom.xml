@@ -44,6 +44,15 @@
             <artifactId>spring-boot-starter-websocket</artifactId>
         </dependency>
 
+        <!-- OpenAPI/Swagger UI (springdoc v3): gera a spec OpenAPI 3 em
+             /v3/api-docs e a UI interativa em /swagger-ui. A v3.x é a linha
+             com suporte ao Spring Boot 4 (a 2.x era para Boot 3). -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>3.1.1</version>
+        </dependency>
+
         <!-- Jackson: serialização JSON (ObjectMapper) para o formato de erro padrão -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>

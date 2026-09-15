@@ -26,6 +26,11 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  *       /api/auth/logout}, e todo o resto.</li>
  * </ul>
  *
+ * <h2>OpenAPI/Swagger</h2>
+ * Os paths {@code /v3/api-docs/**} (spec OpenAPI) e {@code /swagger-ui/**}
+ * (UI interativa) são públicos por conveniência de DESENVOLVIMENTO — a UI em
+ * {@code /swagger-ui} é o "console de teste" da API.
+ *
  * <h2>Por que {@code SessionCreationPolicy.STATELESS}?</h2>
  * O Spring Security por padrão cria {@code JSESSIONID} (cookie de sessão no
  * servidor). Para uma API REST consumida por apps/mobile/webSPA, o padrão é
@@ -62,6 +67,10 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/register", "/api/auth/login", "/api/auth/refresh").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/posts", "/api/posts/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/users", "/api/users/**").permitAll()
+                // OpenAPI/Swagger: spec (/v3/api-docs, JSON e YAML) e UI (/swagger-ui) públicos em dev.
+                // (o /v3/api-docs.yaml tem PONTO antes do sufixo, então o padrão /v3/api-docs/**
+                // não o cobre — precisa da regra explícita)
+                .requestMatchers("/v3/api-docs/**", "/v3/api-docs.yaml", "/swagger-ui/**", "/swagger-ui.html", "/swagger-resources/**", "/webjars/**").permitAll()
                 // Handshake do WebSocket: o JWT é validado pelo JwtWebSocketHandshakeInterceptor
                 // (o filtro HTTP do REST não alcança o trânsito de mensagens posterior).
                 .requestMatchers("/ws-devsos/**").permitAll()

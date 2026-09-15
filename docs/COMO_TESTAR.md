@@ -48,7 +48,27 @@ Se alguma porta ficar de fora, o script loga em `.env\logs\backend.out.log` /
 
 ---
 
-## 2. Testar pelo Web Client (recomendado)
+## 2. Testar pelo Swagger UI (console interativo)
+
+Sem instalar nada, a própria API entrega uma UI de teste em:
+
+**http://localhost:8080/swagger-ui/index.html**
+
+1. Abra o link — você verá todos os endpoints do backend (register/login,
+   posts, corridas, avaliações) com o botão **Try it out**.
+2. Em `POST /api/auth/register` preencha um corpo (nome, e-mail, senha **mín.
+   8** e githubUsername) e **Execute**. A resposta **201** traz `accessToken`
+   e `refreshToken`.
+3. Clique em **Authorize** no topo, cole o `accessToken` e feche.
+4. Agora testa os endpoints do "cadeado" — por exemplo `POST /api/posts` ou
+   `POST /api/sessions` — sem precisar copiar cabeçalho nenhum.
+
+> O cadastro/login/refresh e os `GET` de feed/perfil aparecem **sem** cadeado
+> (são públicos de verdade). O Swagger espelha a regra do backend.
+
+---
+
+## 3. Testar pelo Web Client (recomendado)
 
 No navegador, **http://localhost:5173**. O cabeçalho mostra a URL do backend
 (`http://localhost:8080`, com botão **Aplicar** para trocar) e o estado da
@@ -129,7 +149,7 @@ O chat é **por sala** (`chatRoomId`). Para abrir uma sala do zero, preencha o
 
 ---
 
-## 3. Testar pelo app mobile (Expo)
+## 4. Testar pelo app mobile (Expo)
 
 Depois de validar no Web Client, teste no celular:
 
@@ -143,7 +163,7 @@ Depois de validar no Web Client, teste no celular:
 
 ---
 
-## 4. Testar a API direto (curl / PowerShell)
+## 5. Testar a API direto (curl / PowerShell)
 
 Para conferir um endpoint sem abrir o navegador:
 
@@ -169,7 +189,7 @@ Toda a documentação de rotas/JSONs está em [`docs/API.md`](API.md).
 
 ---
 
-## 5. Endpoint por aba (mapa rápido)
+## 6. Endpoint por aba (mapa rápido)
 
 | Aba do Dev Client | Endpoint(s) que ela exercita |
 |---|---|
