@@ -222,6 +222,27 @@ CREATE TRIGGER trg_reviews_rating AFTER INSERT ON reviews
     FOR EACH ROW EXECUTE FUNCTION fn_recalc_user_rating();
 
 -- ============================================================================
+-- 6) TABELA refresh_tokens  (V2 — refresh token opaco: rotação + revogação)
+-- ============================================================================
+-- Guarda o HASH SHA-256 do refresh token cru (nunca o token); revogar =
+-- marcar revoked_at (logout / logout forçado). replaced_by rastreia a rotação.
+CREATE TABLE refresh_tokens (
+    id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id      UUID        NOT NULL,
+    token_hash   CHAR(64)    NOT NULL,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    expires_at   TIMESTAMPTZ NOT NULL,
+    revoked_at   TIMESTAMPTZ,
+    replaced_by  UUID,
+
+    CONSTRAINT fk_refresh_tokens_user FOREIGN KEY (user_id)
+        REFERENCES users (id) ON DELETE CASCADE
+);
+
+CREATE UNIQUE INDEX uq_refresh_tokens_hash ON refresh_tokens (token_hash);
+CREATE INDEX        idx_refresh_tokens_user ON refresh_tokens (user_id, created_at DESC);
+
+-- ============================================================================
 -- FIM DO SCRIPT
 -- ============================================================================
 COMMIT;

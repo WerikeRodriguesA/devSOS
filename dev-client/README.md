@@ -8,6 +8,7 @@ cada ação, sem alterar contratos da API.
 
 - Arquitetura/regras do backend: veja `docs/` e `notes/` na raiz do projeto.
 - Contrato da API REST: `docs/API.md`.
+- **Como testar o projeto usando esta ferramenta (passo a passo): [`docs/COMO_TESTAR.md`](../docs/COMO_TESTAR.md).**
 
 ## Pré-requisitos
 

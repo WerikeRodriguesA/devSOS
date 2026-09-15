@@ -192,6 +192,36 @@ roda por WebSocket/STOMP, mas todo envio é gravado aqui — o "histórico").
 servidor preenche com o usuário do JWT da conexão, e só `author`/`helper` da
 sessão conseguem enviar ou ler.
 
+### 3.6 Tabela `refresh_tokens` (revogação / logout forçado)
+
+Criada na migração `V2__refresh_tokens.sql`. Suporta a renovação do access
+JWT sem pedir senha de novo e, principalmente, a **revogação** (logout /
+logout forçado) — algo que um JWT stateless sozinho não permite.
+
+| Coluna         | Tipo            | Nulo   | Default           | Restrições / Observações                        |
+|----------------|-----------------|--------|-------------------|--------------------------------------------------|
+| `id`           | `UUID`          | Não    | `gen_random_uuid()` | Chave primária                                  |
+| `user_id`      | `UUID`          | Não    | —                 | **FK → `users.id`** com `ON DELETE CASCADE` (dono do token) |
+| `token_hash`   | `CHAR(64)`      | Não    | —                 | **SHA-256 hex** do token cru — o valor cru NUNCA vai para o banco; índice **UNIQUE** para lookup O(1) |
+| `created_at`   | `TIMESTAMPTZ`   | Não    | `now()`           | UTC — emissão do token |
+| `expires_at`   | `TIMESTAMPTZ`   | Não    | —                 | TTL (padrão 7 dias, `devsos.jwt.refresh-expiracao-segundos`) |
+| `revoked_at`   | `TIMESTAMPTZ`   | —      | —                 | Quando preenchido ⇒ token inutilizável (revogado) |
+| `replaced_by`  | `UUID`          | —      | —                 | Rastro da **rotação**: id do token que o substituiu no `/refresh` |
+
+**Índices:**
+
+- `uq_refresh_tokens_hash` (`token_hash`): lookup único por token.
+- `idx_refresh_tokens_user` (`user_id, created_at DESC`): revogar tudo de um
+  usuário / auditoria.
+
+**Regras de negócio (serviço `RefreshTokenService`):**
+
+- Cada `/refresh` **rotaciona**: o token usado é revogado e nasce um novo.
+- Reuso de token já revogado = suspeita de roubo ⇒ revoga a família inteira
+  do usuário (é o "logout forçado" automático).
+- `POST /api/auth/logout` sem body revoga TODOS os tokens do usuário do JWT;
+  com `{"refreshToken": ...}` revoga só aquele dispositivo.
+
 ---
 
 ## 4. Tipos de Dados — Justificativa
@@ -392,6 +422,7 @@ SELECT version, type, success FROM flyway_schema_history ORDER BY installed_rank
 - [ ] Avaliar migração para UUIDv7 se a escrita no feed for intensa.
 - [x] Tabela `chat_messages` (histórico das salas de chat) — criada em `v4_chat_messages.sql`.
 - [x] DDL versionada via Flyway (`spring-boot-flyway` + `db/migration/`, aplicadas no boot).
+- [x] Tabela `refresh_tokens` (V2) — rotação de refresh token + revogação/logout forçado.
 
 ---
 

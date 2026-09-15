@@ -18,10 +18,12 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * <h2>Quais rotas são públicas e quais exigem login?</h2>
  * <ul>
  *   <li><b>Públicas (abertas):</b> {@code POST /api/auth/register},
- *       {@code POST /api/auth/login} e todos os {@code GET} (o feed é público
- *       como o Instagram: qualquer um navega sem logar).</li>
+ *       {@code POST /api/auth/login}, {@code POST /api/auth/refresh} (renova o
+ *       access JWT a partir do refresh token) e todos os {@code GET} (o feed é
+ *       público como o Instagram: qualquer um navega sem logar).</li>
  *   <li><b>Protegidas (exigem JWT):</b> criar post ({@code POST /api/posts}),
- *       atualizar perfil ({@code PATCH /api/users/...}), e todo o resto.</li>
+ *       atualizar perfil ({@code PATCH /api/users/...}), {@code POST
+ *       /api/auth/logout}, e todo o resto.</li>
  * </ul>
  *
  * <h2>Por que {@code SessionCreationPolicy.STATELESS}?</h2>
@@ -57,7 +59,7 @@ public class SecurityConfig {
                 .authenticationEntryPoint(restAuthenticationHandler)  // 401
                 .accessDeniedHandler(restAuthenticationHandler))      // 403
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/register", "/api/auth/login").permitAll()
+                .requestMatchers("/api/auth/register", "/api/auth/login", "/api/auth/refresh").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/posts", "/api/posts/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/users", "/api/users/**").permitAll()
                 // Handshake do WebSocket: o JWT é validado pelo JwtWebSocketHandshakeInterceptor
