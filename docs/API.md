@@ -738,4 +738,42 @@ não muda a versão do JSON).
 - [ ] Upload real de prints (S3/Cloudinary) em vez de `mediaUrl`
 - [x] Limite de tamanho do body no `POST /api/posts` (`MaxRequestBodySizeFilter`, 413 em `devsos.posts.max-body-bytes` = 64 KiB default)
 - [x] Flyway para versionar a DDL junto do deploy (migrações em `backend/src/main/resources/db/migration/`, aplicadas no boot)
-- [ ] Integração com OpenAPI/Swagger (UI em `/swagger-ui`)
+- [x] Integração com OpenAPI/Swagger (UI em `/swagger-ui`)
+
+---
+
+## 8. OpenAPI/Swagger (vitrine interativa da API)
+
+O backend publica a spec **OpenAPI 3** e uma **UI interativa** (Swagger UI) —
+um "console de teste" navegável da própria API, sem precisar de `curl`:
+
+| O que | Onde |
+|---|---|
+| UI interativa | `GET http://localhost:8080/swagger-ui/index.html` |
+| Spec JSON | `GET http://localhost:8080/v3/api-docs` |
+| Spec YAML | `GET http://localhost:8080/v3/api-docs.yaml` |
+
+### Como testar pela UI
+
+1. Abra `/swagger-ui/index.html`.
+2. Em `POST /api/auth/register` (ou `/login`) clique em **Try it out**, preencha
+   o corpo e **Execute** — a resposta vem com `accessToken` + `refreshToken`.
+3. Copie o `accessToken`, clique em **Authorize** (canto superior direito),
+   cole como `Token` e feche — a partir daí todos os endpoints protegidos do
+   "cadeado" usam esse JWT (não precisa copiar `Authorization: Bearer` na mão).
+4. Endpoints sem cadeado (register/login/refresh, `GET` do feed e do perfil)
+   são públicos no Swagger igual ao `SecurityConfig` — a cobrança de token na
+   UI espelha a regra real.
+
+### Config
+
+Metadados (título/descrição) e o esquema `bearerAuth` ficam em
+`backend/src/main/java/com/devsos/infrastructure/web/OpenApiConfig.java`
+(dependência `springdoc-openapi-starter-webmvc-ui` v3, a linha com suporte ao
+Spring Boot 4). Nada de anotação em cada rota: a exigência de JWT é GLOBAL na
+spec e os endpoints públicos removem com `@SecurityRequirements(value = {})`
+— espelhando o filtro do `SecurityConfig`.
+
+> Os paths do Swagger são **públicos por conveniência de dev**. Para expor em
+> produção, restrinja `/v3/api-docs/**` e `/swagger-ui/**` no `SecurityConfig`
+> (ou atrás de autenticação).
