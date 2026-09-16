@@ -4,6 +4,7 @@ import com.devsos.application.dto.user.AtualizarTecnologiasRequestDTO;
 import com.devsos.application.dto.user.UserProfileResponseDTO;
 import com.devsos.application.service.UserService;
 import com.devsos.infrastructure.security.IdUsuarioLogado;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -39,6 +40,7 @@ public class UserController {
     }
 
     /** GET /api/users/{id} — retorna o perfil público de um usuário. */
+    @SecurityRequirements(value = {}) // perfil é público (como no Instagram)
     @GetMapping("/{id}")
     public ResponseEntity<UserProfileResponseDTO> buscarPerfil(@PathVariable UUID id) {
         return ResponseEntity.ok(userService.buscarPerfilPorId(id));

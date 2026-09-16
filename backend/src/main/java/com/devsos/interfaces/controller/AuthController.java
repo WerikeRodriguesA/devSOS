@@ -8,6 +8,7 @@ import com.devsos.application.dto.auth.RegistroRequestDTO;
 import com.devsos.application.service.AuthService;
 import com.devsos.application.service.RefreshTokenService;
 import com.devsos.infrastructure.security.IdUsuarioLogado;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -39,12 +40,14 @@ public class AuthController {
     }
 
     /** POST /api/auth/register — cria a conta e devolve access + refresh. */
+    @SecurityRequirements(value = {}) // endpoint público: não exige JWT
     @PostMapping("/register")
     public ResponseEntity<AuthResponseDTO> registrar(@Valid @RequestBody RegistroRequestDTO request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(authService.registrar(request));
     }
 
     /** POST /api/auth/login — valida credenciais e devolve access + refresh. */
+    @SecurityRequirements(value = {}) // endpoint público: não exige JWT
     @PostMapping("/login")
     public ResponseEntity<AuthResponseDTO> login(@Valid @RequestBody LoginRequestDTO request) {
         return ResponseEntity.ok(authService.login(request));
@@ -54,6 +57,7 @@ public class AuthController {
      * POST /api/auth/refresh — troca um refresh token válido por um par novo
      * (access JWT + refresh rotacionado). O token usado morre no processo.
      */
+    @SecurityRequirements(value = {}) // endpoint público: não exige JWT
     @PostMapping("/refresh")
     public ResponseEntity<AuthResponseDTO> refresh(@Valid @RequestBody RefreshTokenRequestDTO request) {
         return ResponseEntity.ok(refreshTokenService.reemitirTokens(request.refreshToken()));
