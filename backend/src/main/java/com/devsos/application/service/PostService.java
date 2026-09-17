@@ -88,16 +88,62 @@ public class PostService {
 
     /**
      * Feed principal paginado: posts com status OPEN, dos mais recentes para
-     * os mais antigos. O {@code Pageable} vem do Controller (parâmetros
-     * ?page=0&size=10).
+     * os mais antigos. Aceita filtros opcionais:
+     * <ul>
+     *   <li>{@code q} — busca por texto (título ou descrição, contém);</li>
+     *   <li>{@code tag} — filtra por uma tag;</li>
+     *   <li>{@code tipo} — filtra por {@link PostTipo}.</li>
+     * </ul>
+     * String vazia vira {@code null}: um {@code ?q=} (sem conteúdo) equivale a
+     * não filtrar — feedback menos confuso do que "busca vazia devolve nada".
+     * Quando NENHUM filtro é passado, reusa o método derivado
+     * ({@code findByStatus}) que casa com o índice do feed ({@code idx_posts_feed}).
      */
     @Transactional(readOnly = true)
-    public PagedModel<PostResponseDTO> listarFeed(Pageable pageable) {
-        Page<PostResponseDTO> page = postRepository
-            .findByStatus(PostStatus.OPEN, pageable)
-            .map(PostResponseDTO::from);
+    public PagedModel<PostResponseDTO> listarFeed(Pageable pageable,
+                                                  String q,
+                                                  String tag,
+                                                  PostTipo tipo) {
+        String busca = normalizar(q);
+        String tagBusca = normalizar(tag);
+
+        boolean temFiltro = busca != null || tagBusca != null || tipo != null;
+
+        Page<PostResponseDTO> page;
+        if (temFiltro) {
+            org.springframework.data.domain.Pageable idsPageable =
+                org.springframework.data.domain.PageRequest.of(
+                    pageable.getPageNumber(), pageable.getPageSize());
+            Page<UUID> ids = postRepository.buscarIdsFeed(
+                PostStatus.OPEN.name(), busca, tagBusca,
+                tipo == null ? null : tipo.name(), idsPageable);
+            if (ids.isEmpty()) {
+                page = org.springframework.data.domain.Page.empty(pageable);
+            } else {
+                List<PostResponseDTO> objs = postRepository
+                    .carregarPostsPorId(ids.getContent())
+                    .stream()
+                    .map(PostResponseDTO::from)
+                    .toList();
+                page = new org.springframework.data.domain.PageImpl<>(
+                    objs, pageable, ids.getTotalElements());
+            }
+        } else {
+            page = postRepository
+                .findByStatus(PostStatus.OPEN, pageable)
+                .map(PostResponseDTO::from);
+        }
 
         return new PagedModel<>(page);
+    }
+
+    /** "  foo bar  " → "foo bar"; "" / null → null (sem filtro). */
+    private String normalizar(String valor) {
+        if (valor == null) {
+            return null;
+        }
+        String trim = valor.trim();
+        return trim.isEmpty() ? null : trim;
     }
 
     private void validarRecompensa(PostTipo tipo, BigDecimal recompensaValor) {

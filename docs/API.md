@@ -215,13 +215,29 @@ Erros: `401` (sem token), `400` (body inválido), `404` (usuário não existe).
 
 ### 2.7 `GET /api/posts` — Listar feed paginado (posts `OPEN`, aberto)
 
-Query params (opcionais):
+Popular busca/filtros (issue #16):
 
 | Nome | Default | Descrição |
 |------|---------|-----------|
 | `page` | `0` | Página (base 0) |
 | `size` | `10` | Itens por página |
 | `sort` | `createdAt,desc` | Ordenação |
+| `q` | — | **Busca de texto**: retorna posts cujo **título OU descrição contêm** o termo, case-insensitive (`ILIKE %q%`). Acelerada pelos índices GIN trigram do `pg_trgm` (migração V3). Não informado ⇒ sem filtro de texto. |
+| `tag` | — | **Filtro por tag**: retorna posts que têm a tag exata no array `tags` (operador `@>` do PostgreSQL usando o índice GIN `idx_posts_tags`). Não informado ⇒ sem filtro de tag. |
+| `tipo` | — | **Filtro por tipo**: `FREE` ou `PAID`. Não informado ⇒ sem filtro de tipo. |
+
+Exemplos:
+
+```
+GET /api/posts?q=401&tag=seguranca
+GET /api/posts?tipo=PAID
+GET /api/posts?q=spring&tag=java&tipo=FREE
+```
+
+> Os filtros são **combináveis** e todos opcionais — quem não informa parâmetro
+> é ignorado na condição `:x IS NULL` do SQL (o pl. de execução corta o
+> predicado). Sem nenhum filtro, o comportamento permanece o feed "todos os
+> OPEN".
 
 Resposta — `200 OK` (estrutura `PagedModel` do Spring)
 
@@ -735,7 +751,8 @@ não muda a versão do JSON).
       transferência de pontos e avaliações mútuas (`reviews`)
 - [x] Chat em tempo real da sala (WebSocket/STOMP + histórico em `chat_messages`)
 - [x] Refresh token / logout forçado (revogação)
-- [ ] Upload real de prints (S3/Cloudinary) em vez de `mediaUrl`
+- [x] Upload real de prints (S3/Cloudinary) em vez de `mediaUrl`
+- [x] Busca e filtros no feed (`GET /api/posts?q=&tag=&tipo=`) — pg_trgm (V3) + índice GIN `idx_posts_tags`
 - [x] Limite de tamanho do body no `POST /api/posts` (`MaxRequestBodySizeFilter`, 413 em `devsos.posts.max-body-bytes` = 64 KiB default)
 - [x] Flyway para versionar a DDL junto do deploy (migrações em `backend/src/main/resources/db/migration/`, aplicadas no boot)
 - [x] Integração com OpenAPI/Swagger (UI em `/swagger-ui`)

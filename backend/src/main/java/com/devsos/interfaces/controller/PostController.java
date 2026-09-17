@@ -3,6 +3,7 @@ package com.devsos.interfaces.controller;
 import com.devsos.application.dto.post.PostCreateRequestDTO;
 import com.devsos.application.dto.post.PostResponseDTO;
 import com.devsos.application.service.PostService;
+import com.devsos.domain.post.PostTipo;
 import com.devsos.infrastructure.security.IdUsuarioLogado;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import jakarta.validation.Valid;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
@@ -45,13 +47,25 @@ public class PostController {
     /**
      * GET /api/posts?page=0&size=10&sort=createdAt,desc
      * Feed paginado de posts OPEN, mais recentes primeiro.
+     * <p>
+     * Filtros opcionais e combináveis:
+     * <ul>
+     *   <li>{@code q} — busca por texto (título ou descrição, contém e
+     *       case-insensitive);</li>
+     *   <li>{@code tag} — filtra por uma tag (índice GIN);</li>
+     *   <li>{@code tipo} — {@code FREE} ou {@code PAID}.</li>
+     * </ul>
+     * Ex.: {@code GET /api/posts?q=spring&tag=java&tipo=PAID&page=0&size=10}
      */
     @SecurityRequirements(value = {}) // feed é público como o Instagram
     @GetMapping
     public ResponseEntity<PagedModel<PostResponseDTO>> listarFeed(
-            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
+            @RequestParam(value = "q", required = false) String q,
+            @RequestParam(value = "tag", required = false) String tag,
+            @RequestParam(value = "tipo", required = false) PostTipo tipo) {
 
-        return ResponseEntity.ok(postService.listarFeed(pageable));
+        return ResponseEntity.ok(postService.listarFeed(pageable, q, tag, tipo));
     }
 
     /**
