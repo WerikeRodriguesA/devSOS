@@ -22,13 +22,14 @@ O script local `.env\devsos-up.ps1` sobe **banco + backend + Web Client**
 .env\devsos-up.ps1 -Stop      # derruba backend + Web Client + Expo
 ```
 
-Ao final ele imprime um resumo com as portas. Você deve ver **três serviços de pé**:
+Ao final ele imprime um resumo com as portas. Você deve ver **quatro serviços de pé**:
 
 | Serviço | Endereço | Para quê |
 |---|---|---|
 | **Backend (API)** | `http://localhost:8080` | as regras de negócio (REST + chat) |
 | **Web Client (teste)** | `http://localhost:5173` | **a forma mais rápida de testar tudo** |
 | Mobile (Expo/Metro) | `http://localhost:8081` | o app React Native (terceiro passo) |
+| **Storage (MinIO)** | `http://localhost:9000` (console `:9001`) | guarda os prints enviados no upload (`POST /api/uploads`) |
 
 > **Subiu tudo no primeiro run?** O script compila o backend (`mvn package`) e
 > instala as dependências do Web Client (`npm install`) se ainda não existirem —
@@ -43,7 +44,8 @@ Se alguma porta ficar de fora, o script loga em `.env\logs\backend.out.log` /
 `.env\logs\backend.err.log`. As causas mais comuns:
 
 - **Porta 8080 já ocupada** → outro backend rodando; rode `.env\devsos-up.ps1 -Stop` e suba de novo.
-- **Docker parado** → o Postgres (`devsos-db`, porta 5433) não levanta; inicie o Docker Desktop.
+- **Docker parado** → nem o Postgres (`devsos-db`) nem o MinIO (`devsos-minio`) levantam; inicie o Docker Desktop.
+- **Upload responde 503** → storage desligado no boot (sem `DEV_SOS_STORAGE_*`); o script local já seta as variáveis, mas se subiu o backend na mão, confira.
 - **JAR travado no Windows** → backend rodando segura o `.jar` no rebuild; `-Stop` resolve (ou `-Rebuild` que já faz isso).
 
 ---
@@ -62,6 +64,9 @@ Sem instalar nada, a própria API entrega uma UI de teste em:
 3. Clique em **Authorize** no topo, cole o `accessToken` e feche.
 4. Agora testa os endpoints do "cadeado" — por exemplo `POST /api/posts` ou
    `POST /api/sessions` — sem precisar copiar cabeçalho nenhum.
+5. **Print do problema**: no `POST /api/uploads`, o **Try it out** mostra um
+   seletor de arquivo — escolha um `.png` (o Swagger monta o multipart pra
+   você) e a resposta traz a `mediaUrl` para usar no `POST /api/posts`.
 
 > O cadastro/login/refresh e os `GET` de feed/perfil aparecem **sem** cadeado
 > (são públicos de verdade). O Swagger espelha a regra do backend.
@@ -146,6 +151,10 @@ O chat é **por sala** (`chatRoomId`). Para abrir uma sala do zero, preencha o
 | Concluir corrida sendo o autor | `400` (só o helper conclui) |
 | Abrir chat de corrida que não é sua | erro do WebSocket `Você não participa…` |
 | Corpo acima de 64 KiB no POST /api/posts | `413` Payload Too Large |
+| Upload de imagem sem JWT | `401` |
+| Upload de arquivo que não é imagem (ex.: `.txt`) | `415` Unsupported Media Type |
+| Upload acima de 5 MB | `413` Payload Too Large |
+| Upload de PNG válido e usar a `mediaUrl` no post | `201` + imagem aparece servida por `GET /api/uploads/{chave}` |
 
 ---
 
@@ -183,6 +192,12 @@ Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/posts `
   -Headers @{Authorization="Bearer $($r.token)"} `
   -ContentType 'application/json' `
   -Body '{"titulo":"Bug CORS","descricao":"Fica 401 quando chamo do front?","tags":["spring"],"tipo":"FREE","recompensaValor":0,"mediaUrl":""}'
+
+# upload do print (multipart — no PowerShell use o curl.exe, que já vem no Win10+)
+$up = curl.exe -s -H "Authorization: Bearer $($r.token)" -F "arquivo=@C:\caminho\print.png" http://localhost:8080/api/uploads
+$up         # {"mediaUrl":"http://localhost:8080/api/uploads/<uuid>.png"}
+
+# e use a mediaUrl acima no lugar do mediaUrl vazio do post
 ```
 
 Toda a documentação de rotas/JSONs está em [`docs/API.md`](API.md).

@@ -67,6 +67,9 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/register", "/api/auth/login", "/api/auth/refresh").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/posts", "/api/posts/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/users", "/api/users/**").permitAll()
+                // Imagens de prints são públicas (o feed mostra para qualquer um);
+                // subir imagem (POST /api/uploads) continua exigindo JWT.
+                .requestMatchers(HttpMethod.GET, "/api/uploads/**").permitAll()
                 // OpenAPI/Swagger: spec (/v3/api-docs, JSON e YAML) e UI (/swagger-ui) públicos em dev.
                 // (o /v3/api-docs.yaml tem PONTO antes do sufixo, então o padrão /v3/api-docs/**
                 // não o cobre — precisa da regra explícita)
