@@ -294,7 +294,7 @@ Corpo de envio:
 |-------|------|------------|--------|
 | `titulo` | `string` | Sim | 3–160 caracteres |
 | `descricao` | `string` | Sim | 10–5000 caracteres |
-| `mediaUrl` | `string` | Não | Deve começar com `http(s)://` |
+| `mediaUrl` | `string` | Não | Pode ser a URL devolvida em `POST /api/uploads` (print no storage do DevSOS) ou `http(s)://…` externo |
 | `tags` | `array<string>` | Não | máx. 10 itens |
 | `tipo` | `enum` | Sim | `FREE` ou `PAID` |
 | `recompensaValor` | `number` | Não | ≥ 0; **`FREE` ⇒ obrigatoriamente `0`; `PAID` ⇒ > `0`** |
@@ -587,6 +587,57 @@ GET /api/sessions/{id}/messages
 > `GET /api/sessions/{id}/messages` para o histórico → assinar o tópico para as
 > mensagens novas em tempo real.
 
+### 2.12 `POST /api/uploads` — Subir o print do problema (código 201)
+
+> **Obriga JWT.** Antes, `mediaUrl` só aceitava um link colado de fora (ex.:
+> Imgur). Agora o DevSOS tem **storage próprio** (um MinIO local em dev —
+> S3-compatível): o print é enviado como arquivo e vira um link da própria API.
+
+Formato: `multipart/form-data`, campo de arquivo chamado **`arquivo`**.
+
+```bash
+curl -X POST http://localhost:8080/api/uploads \
+  -H "Authorization: Bearer <token>" \
+  -F "arquivo=@./print.png"
+```
+
+| Requisito | Valor |
+|-----------|-------|
+| Content-Type aceito | `image/png`, `image/jpeg`, `image/webp`, `image/gif` |
+| Arquivo | máx. **5 MB** (definido em `spring.servlet.multipart.max-file-size`) |
+| Autenticação | JWT obrigatório |
+
+Resposta — `201 Created`:
+
+```json
+{
+  "mediaUrl": "http://localhost:8080/api/uploads/ecebf0f0-05a1-4680-a842-75fd8364945a.png"
+}
+```
+
+A `mediaUrl` devolvida pode ir no campo `mediaUrl` do `POST /api/posts` — o
+mesmo contrato de sempre. Ela aponta para `GET /api/uploads/{chave}`, que
+**serve o arquivo direto do storage** (sem expor o MinIO). Quem criou o post
+não precisa guardar o arquivo: o "print" segue vivo no bucket.
+
+#### 2.12.1 `GET /api/uploads/{chave}` — Baixar a imagem (público)
+
+> **Público** (como o feed): qualquer um vê a imagem de um post — `GET` tem
+> `permitAll` no `SecurityConfig`; quem **subir** (`POST`) precisa de JWT.
+
+- `200` — bytes da imagem + `Content-Type` certo + `Cache-Control: max-age=2592000`
+- `401` — sem token (somente no `POST`)
+- `400` — chave fora do padrão (não é `uuid.ext`)
+- `415` — content-type fora da lista de imagens (no `POST`)
+- `413` — arquivo acima de 5 MB (no `POST`)
+- `503` — storage não configurado/minio fora do ar
+
+**Como a segurança da imagem funciona?** A extensão vem do **content-type**
+declarado, nunca do nome original do arquivo (renomear `virus.exe` para
+`virus.png` não engana: se o content-type não é imagem, responde 415). E
+ninguém "sobrescreve" arquivo: a chave é um **UUID gerado no servidor**
+(impossível prever/colidir). Veja `StorageService`.
+
 ---
 
 ## 3. Como rodar
@@ -610,13 +661,20 @@ A aplicação sobe em `http://localhost:8080`.
 > versão 1 e passa a rodar apenas as próximas migrações por cima — os dados
 > existentes não são tocados.
 
-### Autenticação local
+### Configuração local (variáveis de ambiente)
 
 | Propriedade | Default (dev) | Observação |
 |-------------|---------------|------------|
 | `devsos.jwt.secret` | chave fixa de dev | em produção, defina `DEV_SOS_JWT_SECRET` |
 | devsos.jwt.expiracao-segundos | 3600 (1h) | DEV_SOS_JWT_EXPIRACAO para sobrescrever |
 | devsos.jwt.refresh-expiracao-segundos | 604800 (7 dias) | DEV_SOS_JWT_REFRESH_EXPIRACAO para sobrescrever |
+| `devsos.storage.endpoint` | (vazio = storage desligado, upload 503) | MinIO local: `http://localhost:9000` — `DEV_SOS_STORAGE_ENDPOINT` |
+| `devsos.storage.access-key` / `secret-key` | (vazio) | MinIO dev: `devsos` / `devsos123` (nunca commit em produção) |
+| `devsos.storage.bucket` | `devsos` | criado sozinho no boot (`StorageBootstrap`) |
+| `devsos.storage.region` | `us-east-1` | qualquer valor para MinIO |
+
+Storage desligado (`endpoint` vazio) ≠ banco: o backend sobe normal, só o
+`POST /api/uploads` responde **503** até você apontar um MinIO/S3.
 
 ---
 
@@ -740,6 +798,7 @@ não muda a versão do JSON).
 | **Spring Security (stateless)** | Sem `JSESSIONID`: cada requisição se autentica pelo JWT |
 | **BCrypt** | Hash de senha lento e com salt automático (padrão de mercado) |
 | **jjwt 0.12.6** | Geração/validação de tokens (HS384) |
+| **AWS SDK v2 (`s3`) + MinIO** | Protecol S3 é o padrão "de fábrica" de cloud storage: em dev usamos MinIO (S3-compatível, roda no Docker), e ir pra AWS/R2/Spaces depois é só trocar o endpoint — código não muda (`forcePathStyle` porque MinIO usa path-style) |
 
 ---
 
@@ -751,7 +810,7 @@ não muda a versão do JSON).
       transferência de pontos e avaliações mútuas (`reviews`)
 - [x] Chat em tempo real da sala (WebSocket/STOMP + histórico em `chat_messages`)
 - [x] Refresh token / logout forçado (revogação)
-- [x] Upload real de prints (S3/Cloudinary) em vez de `mediaUrl`
+- [x] Upload real de prints (MinIO local em dev, S3-compatível — troca de cloud sem trocar código) em vez de `mediaUrl` solta
 - [x] Busca e filtros no feed (`GET /api/posts?q=&tag=&tipo=`) — pg_trgm (V3) + índice GIN `idx_posts_tags`
 - [x] Limite de tamanho do body no `POST /api/posts` (`MaxRequestBodySizeFilter`, 413 em `devsos.posts.max-body-bytes` = 64 KiB default)
 - [x] Flyway para versionar a DDL junto do deploy (migrações em `backend/src/main/resources/db/migration/`, aplicadas no boot)
