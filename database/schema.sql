@@ -209,18 +209,29 @@ CREATE TRIGGER trg_sessions_no_self_help BEFORE INSERT ON sessions
 -- Função: recalcula a média de avaliações do usuário quando nasce review
 CREATE OR REPLACE FUNCTION fn_recalc_user_rating()
 RETURNS TRIGGER AS $$
+DECLARE
+    v_reviewed_id UUID;
 BEGIN
+    IF TG_OP = 'DELETE' THEN
+        v_reviewed_id := OLD.reviewed_id;
+    ELSE
+        v_reviewed_id := NEW.reviewed_id;
+    END IF;
+
     UPDATE users
        SET media_avaliacoes = COALESCE(
-             (SELECT ROUND(AVG(nota)::numeric, 2) FROM reviews WHERE reviewed_id = NEW.reviewed_id), 0)
-     WHERE id = NEW.reviewed_id;
+             (SELECT ROUND(AVG(nota)::numeric, 2) FROM reviews WHERE reviewed_id = v_reviewed_id), 0)
+     WHERE id = v_reviewed_id;
+
+    IF TG_OP = 'DELETE' THEN
+        RETURN OLD;
+    END IF;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trg_reviews_rating AFTER INSERT ON reviews
+CREATE TRIGGER trg_reviews_rating AFTER INSERT OR UPDATE OR DELETE ON reviews
     FOR EACH ROW EXECUTE FUNCTION fn_recalc_user_rating();
-
 -- ============================================================================
 -- 6) TABELA refresh_tokens  (V2 — refresh token opaco: rotação + revogação)
 -- ============================================================================

@@ -163,8 +163,11 @@ Avaliação mútua após uma sessão concluída.
 - `reviews_um_por_sessao` (UNIQUE `(session_id, reviewer_id)`): cada usuário só
   avalia **uma vez** por sessão.
 - `reviews_avaliador_diff` (CHECK): ninguém se auto-avalia.
-- **Trigger `trg_reviews_rating`**: ao inserir uma review, recalcula
-  `users.media_avaliacoes` do avaliado automaticamente.
+- **Trigger `trg_reviews_rating`**: recalcula automaticamente
+  `users.media_avaliacoes` do avaliado **em INSERT, UPDATE e DELETE** (V4 —
+  issue #20). A função `fn_recalc_user_rating` é sensível ao `TG_OP`: usa
+  `NEW.reviewed_id` quando a linha nasce/é alterada e `OLD.reviewed_id` quando
+  é apagada (na V1 só rodava em INSERT).
 
 ---
 

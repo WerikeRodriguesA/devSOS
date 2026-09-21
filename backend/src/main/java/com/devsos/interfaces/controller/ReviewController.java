@@ -2,6 +2,7 @@ package com.devsos.interfaces.controller;
 
 import com.devsos.application.dto.review.ReviewCreateRequestDTO;
 import com.devsos.application.dto.review.ReviewResponseDTO;
+import com.devsos.application.dto.review.ReviewUpdateRequestDTO;
 import com.devsos.application.service.ReviewService;
 import com.devsos.infrastructure.security.IdUsuarioLogado;
 import jakarta.validation.Valid;
@@ -12,11 +13,16 @@ import org.springframework.data.web.PagedModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.UUID;
 
 /**
  * Avaliações mútuas pós-corrida.
@@ -47,5 +53,29 @@ public class ReviewController {
             @AuthenticationPrincipal IdUsuarioLogado logado,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         return ResponseEntity.ok(reviewService.listarRecebidas(logado.id(), pageable));
+    }
+
+    /**
+     * PATCH /api/reviews/{id} — edita a MINHA avaliação (nota/comentário).
+     * <p>O dono vem do token; editar a avaliação de outro dev → 400.</p>
+     */
+    @PatchMapping("/{id}")
+    public ResponseEntity<ReviewResponseDTO> atualizar(
+            @AuthenticationPrincipal IdUsuarioLogado logado,
+            @PathVariable UUID id,
+            @Valid @RequestBody ReviewUpdateRequestDTO request) {
+        return ResponseEntity.ok(reviewService.atualizar(logado.id(), id, request));
+    }
+
+    /**
+     * DELETE /api/reviews/{id} — apaga a MINHA avaliação.
+     * <p>O dono vem do token; apagar a avaliação de outro dev → 400.</p>
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> excluir(
+            @AuthenticationPrincipal IdUsuarioLogado logado,
+            @PathVariable UUID id) {
+        reviewService.excluir(logado.id(), id);
+        return ResponseEntity.noContent().build();
     }
 }
