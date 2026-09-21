@@ -53,6 +53,16 @@
             <version>3.1.1</version>
         </dependency>
 
+        <!-- AWS SDK v2 (S3): cliente oficial de object storage. Funciona contra
+             QUALQUER endpoint S3-compatível — em dev usamos o MinIO local
+             (Docker), em produção aponta para AWS S3/R2/Spaces trocando só o
+             .endpointOverride(). O SDK é a habilidade que transfere. -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <version>2.46.7</version>
+        </dependency>
+
         <!-- Jackson: serialização JSON (ObjectMapper) para o formato de erro padrão -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>

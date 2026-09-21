@@ -10,6 +10,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 
@@ -144,6 +145,45 @@ public class GlobalExceptionHandler {
             "Rota não encontrada: " + ex.getResourcePath()
         );
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+
+    /**
+     * 413 — arquivo de upload acima do limite (default 5 MB). Nada parecido
+     * com o JSON "normal": o Spring lança esta exceção já na leitura do
+     * multipart, ANTES do Controller — e o advice converte no envelope padrão.
+     * (É a "camada 2" da proteção: 1) navegador/cliente, 2) container Tomcat
+     * aqui, 3) regra de negócio no Service.)
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiError> handleUploadGrande(MaxUploadSizeExceededException ex) {
+        var error = ApiError.of(
+            HttpStatus.PAYLOAD_TOO_LARGE.value(),
+            HttpStatus.PAYLOAD_TOO_LARGE.getReasonPhrase(),
+            "Arquivo muito grande. O upload de imagem aceita no máximo 5 MB."
+        );
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(error);
+    }
+
+    /** 415 — content-type do upload fora da lista de imagens aceitas. */
+    @ExceptionHandler(TipoDeArquivoNaoSuportadoException.class)
+    public ResponseEntity<ApiError> handleTipoDeArquivo(TipoDeArquivoNaoSuportadoException ex) {
+        var error = ApiError.of(
+            HttpStatus.UNSUPPORTED_MEDIA_TYPE.value(),
+            HttpStatus.UNSUPPORTED_MEDIA_TYPE.getReasonPhrase(),
+            ex.getMessage()
+        );
+        return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).body(error);
+    }
+
+    /** 503 — storage fora do ar (MinIO/S3) ou não configurado. */
+    @ExceptionHandler(StorageIndisponivelException.class)
+    public ResponseEntity<ApiError> handleStorageIndisponivel(StorageIndisponivelException ex) {
+        var error = ApiError.of(
+            HttpStatus.SERVICE_UNAVAILABLE.value(),
+            HttpStatus.SERVICE_UNAVAILABLE.getReasonPhrase(),
+            ex.getMessage()
+        );
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(error);
     }
 
     /**
