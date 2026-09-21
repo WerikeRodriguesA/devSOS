@@ -158,6 +158,7 @@ O chat é **por sala** (`chatRoomId`). Para abrir uma sala do zero, preencha o
 | Concluir corrida sendo o autor | `400` (só o helper conclui) |
 | Abrir chat de corrida que não é sua | erro do WebSocket `Você não participa…` |
 | Corpo acima de 64 KiB no POST /api/posts | `413` Payload Too Large |
+| Mais de 5 logins seguidos do mesmo IP | `429` Too Many Requests + `Retry-After` |
 | Upload de imagem sem JWT | `401` |
 | Upload de arquivo que não é imagem (ex.: `.txt`) | `415` Unsupported Media Type |
 | Upload acima de 5 MB | `413` Payload Too Large |
