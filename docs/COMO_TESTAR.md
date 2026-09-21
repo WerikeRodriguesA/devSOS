@@ -220,3 +220,48 @@ Toda a documentação de rotas/JSONs está em [`docs/API.md`](API.md).
 | Corridas | `GET /api/sessions`, `GET /api/sessions/{id}`, `PATCH /api/sessions/{id}/status` |
 | Chat | `GET /api/sessions/{id}/messages` + WebSocket `/ws-devsos`/`/topic/chat/{room}` `/app/chat/{room}` |
 | Avaliações | `POST /api/reviews`, `GET /api/reviews` |
+
+---
+
+## 7. Recuperação / troca de senha (fluxo de conta)
+
+Sem provedor de e-mail ainda (fase 1), o token de recuperação é **devolvido na
+resposta** quando `devsos.auth.expor-token-reset=true` — ligue no boot com a
+variável de ambiente (senão `tokenDesenvolvimento` vem `null`):
+
+```powershell
+$env:DEV_SOS_AUTH_EXPOR_TOKEN = "true"   # = devsos.auth.expor-token-reset=true
+
+# 1) Pedir a recuperação (202; mensagem SEMPRE neutra — exista ou não a conta)
+$fp = Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/auth/forgot-password `
+  -ContentType 'application/json' -Body '{"email":"t1@dev.com"}'
+$fp.tokenDesenvolvimento                 # token cru (só com expor-token-reset=true)
+
+# 2) Redefinir a senha com o token (204, sem corpo)
+Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/auth/reset-password `
+  -ContentType 'application/json' `
+  -Body (@{ token = $fp.tokenDesenvolvimento; novaSenha = "senhaNova123" } | ConvertTo-Json)
+
+# 3) Login com a senha NOVA (a antiga passa a dar 400)
+$r = Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/auth/login `
+  -ContentType 'application/json' -Body '{"email":"t1@dev.com","senha":"senhaNova123"}'
+
+# 4) Trocar a senha já logado (204) — exige JWT
+Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/auth/change-password `
+  -Headers @{ Authorization = "Bearer $($r.token)" } `
+  -ContentType 'application/json' `
+  -Body '{"senhaAtual":"senhaNova123","novaSenha":"senhaFinal123"}'
+```
+
+Resultados esperados:
+
+| Passo | Esperado |
+|-------|----------|
+| `forgot-password` (e-mail existe) | `202` + mensagem neutra (+ `tokenDesenvolvimento` se exposto) |
+| `forgot-password` (e-mail **não** existe) | `202` + a **mesma** mensagem (`tokenDesenvolvimento` `null`) |
+| `reset-password` com token válido | `204`; as sessões antigas são revogadas |
+| `reset-password` com token **reusado/expirado** | `400 "Token de recuperação inválido ou expirado."` |
+| `change-password` senha atual errada | `400 "Senha atual incorreta."` |
+| `change-password` correto | `204`; relogar com a senha nova |
+
+> Detalhes de payload, erros e segurança em [`docs/API.md`](API.md) §2.5–2.7.
