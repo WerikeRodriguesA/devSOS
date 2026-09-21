@@ -815,6 +815,7 @@ não muda a versão do JSON).
 - [x] Limite de tamanho do body no `POST /api/posts` (`MaxRequestBodySizeFilter`, 413 em `devsos.posts.max-body-bytes` = 64 KiB default)
 - [x] Flyway para versionar a DDL junto do deploy (migrações em `backend/src/main/resources/db/migration/`, aplicadas no boot)
 - [x] Integração com OpenAPI/Swagger (UI em `/swagger-ui`)
+- [x] Suíte de testes automatizados (JUnit 5 + MockMvc + Testcontainers): auth, feed, corrida, reviews, pontos e concorrência do duplo aceite (`mvn test`)
 
 ---
 

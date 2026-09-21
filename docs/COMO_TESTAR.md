@@ -211,7 +211,30 @@ Toda a documentação de rotas/JSONs está em [`docs/API.md`](API.md).
 
 ---
 
-## 6. Endpoint por aba (mapa rápido)
+## 6. Testes automatizados (JUnit 5 + MockMvc + Testcontainers)
+
+A suíte de integração sobe um **Postgres real em container** (Testcontainers) e
+o Flyway aplica as migrações do zero — **não** precisa do banco de dev nem de
+criar `devsos_test`. Basta ter o **Docker de pé** (o mesmo Docker Desktop que
+roda o `devsos-db`).
+
+```powershell
+cd backend
+mvn test                                  # roda toda a suíte
+mvn test -Dtest=ConcorrenciaAceiteTest    # só o teste de concorrência
+```
+
+Cobertura: **auth** (register 201, duplicado 400, login 200, senha errada 400,
+401 sem token), **feed** (GET público, criar FREE/PAID, validações com
+`fieldErrors`, filtros/paginação), **corrida** (aceite MATCHED, duplicata,
+self-help, ACTIVE/COMPLETED/CANCELLED, post volta a OPEN), **pontos**
+(transferência PAID + saldo insuficiente), **reviews** (nota 1–5, uma por
+pessoa, média recalculada, reputação) e a **concorrência do duplo aceite**
+(8 helpers no mesmo post → 1 vence, resto 400/409).
+
+---
+
+## 7. Endpoint por aba (mapa rápido)
 
 | Aba do Dev Client | Endpoint(s) que ela exercita |
 |---|---|

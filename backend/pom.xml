@@ -129,6 +129,35 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- No Spring Boot 4 o @AutoConfigureMockMvc saiu do starter-test e
+             vive no módulo spring-boot-webmvc-test (pacote
+             org.springframework.boot.webmvc.test.autoconfigure). -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-webmvc-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Testcontainers: POSTGRES REAL no teste de integração (#12) — sobe um
+             Postgres em container Docker com as migrações Flyway aplicadas, para
+             os testes rodarem iguais em qualquer máquina/CI (nada de apontar para
+             o banco local de dev). -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
