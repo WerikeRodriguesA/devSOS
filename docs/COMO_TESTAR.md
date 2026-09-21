@@ -205,6 +205,12 @@ $up = curl.exe -s -H "Authorization: Bearer $($r.token)" -F "arquivo=@C:\caminho
 $up         # {"mediaUrl":"http://localhost:8080/api/uploads/<uuid>.png"}
 
 # e use a mediaUrl acima no lugar do mediaUrl vazio do post
+
+# editar o próprio perfil (PATCH /api/users/me — campos opcionais; null = não altera)
+Invoke-RestMethod -Method Patch -Uri http://localhost:8080/api/users/me `
+  -Headers @{Authorization="Bearer $($r.token)"} `
+  -ContentType 'application/json' `
+  -Body '{"nome":"Teste Editado","bio":"Dev backend","avatarUrl":"https://github.com/t1.png","githubUsername":"t1","tecnologiasDominadas":["Java","SQL"]}'
 ```
 
 Toda a documentação de rotas/JSONs está em [`docs/API.md`](API.md).
@@ -215,7 +221,7 @@ Toda a documentação de rotas/JSONs está em [`docs/API.md`](API.md).
 
 | Aba do Dev Client | Endpoint(s) que ela exercita |
 |---|---|
-| Autenticação | `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/users/{id}` |
+| Autenticação | `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/users/{id}`, edição do perfil `PATCH /api/users/me` |
 | Feed | `GET /api/posts` (feed), `POST /api/posts`, `POST /api/sessions` (aceitar) |
 | Corridas | `GET /api/sessions`, `GET /api/sessions/{id}`, `PATCH /api/sessions/{id}/status` |
 | Chat | `GET /api/sessions/{id}/messages` + WebSocket `/ws-devsos`/`/topic/chat/{room}` `/app/chat/{room}` |

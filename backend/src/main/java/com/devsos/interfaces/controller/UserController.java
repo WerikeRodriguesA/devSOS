@@ -1,5 +1,6 @@
 package com.devsos.interfaces.controller;
 
+import com.devsos.application.dto.user.AtualizarPerfilRequestDTO;
 import com.devsos.application.dto.user.AtualizarTecnologiasRequestDTO;
 import com.devsos.application.dto.user.UserProfileResponseDTO;
 import com.devsos.application.service.UserService;
@@ -59,5 +60,17 @@ public class UserController {
             @AuthenticationPrincipal IdUsuarioLogado logado,
             @Valid @RequestBody AtualizarTecnologiasRequestDTO request) {
         return ResponseEntity.ok(userService.atualizarTecnologias(logado.id(), request));
+    }
+
+    /**
+     * PATCH /api/users/me — edita o perfil completo do usuário logado
+     * (nome, bio, githubUsername, avatarUrl e tecnologias). O DONO vem do
+     * token, então não há "editar o perfil de terceiros".
+     */
+    @PatchMapping("/me")
+    public ResponseEntity<UserProfileResponseDTO> atualizarPerfil(
+            @AuthenticationPrincipal IdUsuarioLogado logado,
+            @Valid @RequestBody AtualizarPerfilRequestDTO request) {
+        return ResponseEntity.ok(userService.atualizarPerfil(logado.id(), request));
     }
 }
