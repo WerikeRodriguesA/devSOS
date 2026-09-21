@@ -97,7 +97,14 @@ sessão. À direita, o painel **Requisições** registra **todas** as chamadas
 1. Crie um post: título (3–160), tipo `FREE` ou `PAID`, recompensa, tags e
    descrição (10–5000). **Publicar** → o card aparece no feed (201 no log).
 2. **Recarregue** o feed para ver posts de outros usuários.
-3. No card de um post **que não é seu**, clique **Aceitar socorro** →
+3. **Busca e filtros** (issue #16) — no feed, digite na busca / selecione tag
+   e tipo:
+   - **texto** (`q`): acha posts cujo título OU descrição **contêm** o termo
+     (case-insensitive). Ex.: `401` acha "Erro 401 no JWT com Spring Security".
+   - **tag**: filtra por tags exatas (ex.: `java`, `docker`).
+   - **tipo**: `FREE` / `PAID`.
+   - Filtros **combináveis**; sem filtro, o feed segue completо e paginado.
+4. No card de um post **que não é seu**, clique **Aceitar socorro** →
    `POST /api/sessions { postId }` cria a corrida e o próprio card mostra o
    retorno (sessão + `chatRoomId`) com o botão **Abrir chat**.
 
