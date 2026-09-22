@@ -394,6 +394,7 @@ Erros:
 | `401` | Sem token |
 | `400` | Post não está `OPEN` / já tem corrida ativa / você é o autor |
 | `404` | Post (ou usuário logado) não existe |
+| `409` | **Duplo aceite**: se dois helpers aceitarem o mesmo post no mesmo instante, o índice único (`uniq_sessions_post_active`) barra o 2º como `409` — na prática o **lock pessimista** (issue #13) resolve primeiro: o 2º helper relê o post `IN_PROGRESS` e recebe `400` na regra acima, mas o `409` segue existindo como "cinto de segurança" do banco |
 | `409` | Corrida de concorrência: outro helper aceitou no mesmo instante (índice único) |
 
 #### 2.9.2 `PATCH /api/sessions/{id}` — Avançar a corrida (código 200)
@@ -843,6 +844,7 @@ não muda a versão do JSON).
 - [x] Endpoints da "corrida" (`sessions`): aceitar socorro, máquina de estados,
       transferência de pontos e avaliações mútuas (`reviews`)
 - [x] Editar/excluir a própria avaliação (`PATCH`/`DELETE /api/reviews/{id}`) + trigger recalcula média em UPDATE/DELETE
+- [x] Blindar o duplo aceite sob concorrência (lock pessimista `FOR UPDATE` + índice único + teste de estresse)
 - [x] Chat em tempo real da sala (WebSocket/STOMP + histórico em `chat_messages`)
 - [x] Refresh token / logout forçado (revogação)
 - [x] Upload real de prints (MinIO local em dev, S3-compatível — troca de cloud sem trocar código) em vez de `mediaUrl` solta

@@ -217,6 +217,25 @@ $up         # {"mediaUrl":"http://localhost:8080/api/uploads/<uuid>.png"}
 
 Toda a documentação de rotas/JSONs está em [`docs/API.md`](API.md).
 
+### Teste de estresse — "duplo aceite" (issue #13)
+
+Para provar que o banco/aplicação impedem **dois helpers pegarem o mesmo post**,
+há um teste automatizado que dispara 8 "aceites" no mesmo milissegundo
+(`CountDownLatch`) e exige: exatamente 1 vencedor, 7 perdedores com `400`
+(regra/lock) ou `409` (índice único):
+
+```powershell
+# 1) banco de teste existe? (uma vez)
+docker exec -it devsos-db psql -U devsos -c "CREATE DATABASE devsos_test"
+# 2) roda o teste (usa o perfil test → devsos_test; Flyway migra do zero)
+cd backend; mvn -o test -Dtest=DuploAceiteConcorrenciaTest
+```
+
+Saída esperada no console: `vencedores=1 400=7 409=0 outros=0`.
+
+> Detalhes da estratégia (lock pessimista `FOR UPDATE` + índice único parcial +
+> trigger self-help) estão em [`docs/TECNICA.md`](TECNICA.md) → seção 6.
+
 ---
 
 ## 6. Endpoint por aba (mapa rápido)

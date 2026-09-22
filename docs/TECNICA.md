@@ -320,14 +320,14 @@ PostgreSQL — permite operações como "contém", "sobrepõe" e "contém todos"
 
 ### 5.6 Sobre o índice único para "um helper por post"
 
-A garantia de que **dois especialistas não pegam o mesmo post** tem duas
-camadas:
+A garantia de que **dois especialistas não pegam o mesmo post** é em camadas
+(decidida na issue #13 — ver seção 6):
 
-1. **Aplicação (bê-á-bá):** ao aceitar, faça
-   `UPDATE posts SET status = 'IN_PROGRESS' WHERE id = ? AND status = 'OPEN'`
-   e verifique se 1 linha foi afetada (concorrência atômica).
-2. **Banco (blindagem extra):** use um índice único parcial — a forma nativa e
-   simples de garantir matematicamente no PostgreSQL:
+1. **Aplicação (camada principal):** o aceite lê o post com **lock pessimista**
+   (`SELECT ... FOR UPDATE` via `SessionService.aceitarSocorro`) — o 2º helper
+   espera o 1º e relê o post `IN_PROGRESS` → ganha `400` amigável.
+2. **Banco (blindagem extra):** o índice único parcial — garantia matemática no
+   PostgreSQL para o que escapar do service:
 
 ```sql
 CREATE UNIQUE INDEX uniq_sessions_post_active
@@ -335,45 +335,74 @@ CREATE UNIQUE INDEX uniq_sessions_post_active
     WHERE status IN ('MATCHED', 'ACTIVE');
 ```
 
-> Deixei esse índice de fora do script principal porque a política de negócio
-> ("1 helper por post") ainda pode mudar no MVP (ex.: permitir múltiplos
-> helpers). Assim que a regra for fechada, **ative-o**. Ver seção 6.
+> O índice está ativo na V1. A política "1 helper por post" foi fechada no
+> MVP; se um dia a regra mudar (múltiplos helpers), o índice deve ser
+> removido junto com a regra do service. Detalhes na seção 6.
 
 ---
 
-## 6. Concorrência — como o banco evita "dois helpers para o mesmo post"
+## 6. Concorrência — o "Duplo Aceite" (dois helpers, um post) — issue #13
 
-O cenário perigoso: dois especialistas clicam "Aceitar Socorro" ao mesmo tempo.
+O cenário perigoso: dois especialistas clicam "Aceitar Socorro" no MESMO
+milissegundo. A estratégia definitiva é **em camadas**, decidida na #13:
 
-**Solução em camadas:**
+### 6.1 Barreira 1 — Lock pessimista (OPÇÃO B, escolhida)
 
-1. **Atualização atômica do post (nível de aplicação):**
+O caminho do aceite (`SessionService.aceitarSocorro`) busca o post com
+`@Lock(LockModeType.PESSIMISTIC_WRITE)` (`findByIdComLock` no repositório),
+que vira `SELECT ... FOR UPDATE`:
 
-   ```sql
-   -- dentro de uma transação
-   BEGIN;
-   SELECT id FROM posts WHERE id = $1 AND status = 'OPEN' FOR UPDATE;
-   -- se a linha existe: INSERT a session e UPDATE posts.status='IN_PROGRESS'
-   -- senão: ROLLBACK, ninguém pegou o post
-   COMMIT;
-   ```
+```sql
+BEGIN;                                  -- TX do helper A
+SELECT ... FROM posts WHERE id = $1 FOR UPDATE;  -- A trava a linha do post
+-- checagens: status OPEN, helper ≠ autor, sem corrida MATCHED/ACTIVE
+INSERT sessions (status 'MATCHED'); UPDATE posts SET status='IN_PROGRESS';
+COMMIT;                                 -- libera a linha
+```
 
-   O `SELECT ... FOR UPDATE` trava a linha do post: o segundo helper fica
-   esperando e, ao ler, vê `status` já `IN_PROGRESS` → socorro já tem dono.
+O helper B que chegou atrasado fica **bloqueado no SELECT FOR UPDATE**
+(espera o A terminar). Ao reler, vê o post já `IN_PROGRESS` → o Service
+responde `400` amigável ("Este post já está em atendimento..."). O "perdedor"
+descobre a derrota **na leitura**, com uma mensagem clara — não precisa
+interpretar um erro de constraint.
 
-2. **Blindagem no banco:**
+**Trade-off escolhido (Opção B vs Opção A):**
+- **A favor do lock** (escolhido): serializa as transações — o comportamento
+  é deterministico (o 2º vê o post mudado e ganha 400), a mensagem é amigável
+  e é fácil de raciocinar (uma única leitura travada).
+- **Custo**: toda chamada de aceite segura um lock de linha de post na
+  transação. No volume do MVP é desprezível; se o app escalar muito, dá para
+  trocar por `SKIP LOCKED` ou pela Opção A pura (índice único) + mensagem 409.
 
-   ```sql
-   CREATE UNIQUE INDEX uniq_sessions_post_active
-       ON sessions (post_id)
-       WHERE status IN ('MATCHED', 'ACTIVE');
-   ```
+### 6.2 Barreira 2 e 3 — Blindagem no banco (cinto de segurança)
 
-   Missões paralelas: a inserção de uma segunda sessão ativa no mesmo post
-   falha com erro `23505 (unique_violation)` — o `INSERT` nem chega a acontecer.
+Mesmo que tudo acima falhe (ex.: acesso direto ao banco), a DDL ainda impede:
 
-> **Regra de ouro:** a aplicação trata o erro `23505` capturando a exceção e
-> respondendo "alguém já aceitou este socorro" de forma amigável.
+```sql
+CREATE UNIQUE INDEX uniq_sessions_post_active
+    ON sessions (post_id)
+    WHERE status IN ('MATCHED', 'ACTIVE');
+
+-- trigger trg_sessions_no_self_help: veta "aceitar o próprio post"
+```
+
+A 2ª sessão ativa no mesmo post falha com `23505 (unique_violation)`; o
+`GlobalExceptionHandler` traduz para **409** com mensagem neutra. Na prática,
+com o lock da 6.1 o 409 virou raridade (só se algo escapar do service).
+
+### 6.3 Prova com estresse automatizado
+
+`backend/src/test/java/.../DuploAceiteConcorrenciaTest.java` (perfil `test`,
+banco separado `devsos_test`):
+
+- Cria 1 post OPEN + 8 helpers e dispara o aceite dos 8 ao MESMO tempo
+  (`CountDownLatch`), cada um na sua thread/transação;
+- Asserts: **exatamente 1 vencedor**; os 7 restantes retornam `400` (regra)
+  ou `409` (índice); zero "outros" erros;
+- Saída real da rodada: `vencedores=1 400(regra/lock)=7 409(indice)=0 outros=0`.
+
+Rodar: `mvn test -Dtest=DuploAceiteConcorrenciaTest` (com o Postgres de pé e
+o banco `devsos_test` criado via `CREATE DATABASE devsos_test`).
 
 ---
 

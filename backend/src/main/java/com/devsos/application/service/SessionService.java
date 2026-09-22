@@ -77,17 +77,22 @@ public class SessionService {
      *
      * <p>Três barreiras em sequência (camadas!):</p>
      * <ol>
-     *   <li><b>Service</b>: post precisa estar OPEN, helper ≠ autor, e não pode
-     *       existir outra corrida MATCHED/ACTIVE (1 por vez);</li>
+     *   <li><b>Service + lock pessimista</b>: o post é lido com
+     *       {@code PESSIMISTIC_WRITE} (SELECT ... FOR UPDATE pelo
+     *       {@code findByIdComLock}) — post precisa estar OPEN, helper ≠ autor e
+     *       não pode existir outra corrida MATCHED/ACTIVE (1 por vez). O lock
+     *       SERIALIZA o "duplo aceite" (issue #13): o 2º helper espera o 1º
+     *       terminar e relê o post já {@code IN_PROGRESS} → 400 amigável;</li>
      *   <li><b>Banco (trigger)</b>: {@code trg_sessions_no_self_help} veta o
      *       self-help mesmo se um cliente "malicioso" burlar a 1ª barreira;</li>
      *   <li><b>Banco (índice único)</b>: {@code uniq_sessions_post_active} veta
-     *       a 2ª corrida ativa — proteção contra corrida de concorrência.</li>
+     *       a 2ª corrida ativa — cinto de segurança final (409) se qualquer
+     *       coisa escapar do lock.</li>
      * </ol>
      */
     @Transactional
     public SessionResponseDTO aceitarSocorro(UUID helperId, SessionCreateRequestDTO request) {
-        PostEntity post = postRepository.findById(request.postId())
+        PostEntity post = postRepository.findByIdComLock(request.postId())
             .orElseThrow(() -> ResourceNotFoundException.of(RECURSO_POST));
 
         if (post.getStatus() != PostStatus.OPEN) {
