@@ -2,6 +2,7 @@ package com.devsos.application.service;
 
 import com.devsos.application.dto.review.ReviewCreateRequestDTO;
 import com.devsos.application.dto.review.ReviewResponseDTO;
+import com.devsos.application.dto.review.ReviewUpdateRequestDTO;
 import com.devsos.application.exception.RegraDeNegocioException;
 import com.devsos.application.exception.ResourceNotFoundException;
 import com.devsos.domain.review.ReviewEntity;
@@ -39,6 +40,7 @@ public class ReviewService {
 
     private static final String RECURSO_CORRIDA = "Corrida";
     private static final String RECURSO_USUARIO = "Usuário";
+    private static final String RECURSO_AVALIACAO = "Avaliação";
 
     private final ReviewRepository reviewRepository;
     private final SessionRepository sessionRepository;
@@ -99,5 +101,54 @@ public class ReviewService {
             .findByReviewedId(userId, pageable)
             .map(r -> ReviewResponseDTO.from(r, r.getReviewed().getMediaAvaliacoes()));
         return new PagedModel<>(page);
+    }
+
+    /**
+     * PATCH /api/reviews/{id} — edita a MINHA avaliação (issue #20).
+     * <p>Só o {@code reviewer} (dono, vindo do token) pode mudar nota/comentário
+     * da própria review; avaliação de terceiros → regra de negócio (400). A
+     * média do avaliado reajusta via trigger do banco (agora com AFTER UPDATE) —
+     * o método relê o usuário para devolver a média nova na resposta.</p>
+     */
+    @Transactional
+    public ReviewResponseDTO atualizar(UUID reviewerId, UUID reviewId, ReviewUpdateRequestDTO request) {
+        ReviewEntity review = reviewRepository.findById(reviewId)
+            .orElseThrow(() -> ResourceNotFoundException.of(RECURSO_AVALIACAO));
+
+        if (!review.getReviewer().getId().equals(reviewerId)) {
+            throw new RegraDeNegocioException("Você só pode editar a sua própria avaliação.");
+        }
+
+        if (request.nota() != null) {
+            review.setNota(request.nota());
+        }
+        if (request.comentario() != null && !request.comentario().trim().isEmpty()) {
+            review.setComentario(request.comentario().trim());
+        }
+
+        reviewRepository.saveAndFlush(review);
+
+        UserEntity reviewedAtualizado = userRepository.findById(review.getReviewed().getId())
+            .orElseThrow(() -> ResourceNotFoundException.of(RECURSO_USUARIO));
+
+        return ReviewResponseDTO.from(review, reviewedAtualizado.getMediaAvaliacoes());
+    }
+
+    /**
+     * DELETE /api/reviews/{id} — apaga a MINHA avaliação (issue #20).
+     * <p>Mesma proteção de dono do PATCH. O trigger (agora com AFTER DELETE)
+     * recalcula a média do avaliado sem a review removida.</p>
+     */
+    @Transactional
+    public void excluir(UUID reviewerId, UUID reviewId) {
+        ReviewEntity review = reviewRepository.findById(reviewId)
+            .orElseThrow(() -> ResourceNotFoundException.of(RECURSO_AVALIACAO));
+
+        if (!review.getReviewer().getId().equals(reviewerId)) {
+            throw new RegraDeNegocioException("Você só pode apagar a sua própria avaliação.");
+        }
+
+        reviewRepository.delete(review);
+        reviewRepository.flush();
     }
 }

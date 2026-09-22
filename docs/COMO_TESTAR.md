@@ -144,6 +144,13 @@ O chat é **por sala** (`chatRoomId`). Para abrir uma sala do zero, preencha o
    uma corrida COMPLETED → nota 1–5 + comentário → **Avaliar**. A resposta
    mostra a nova média do avaliado.
 2. **Avaliações que EU recebi** mostra o que os outros te avaliaram.
+3. **Editar a MINHA avaliação** (issue #20): no histórico recebido (ou no
+   endpoint `PATCH /api/reviews/{id}`), mude nota/comentário — a média do
+   avaliado reajusta na hora.
+4. **Apagar a MINHA avaliação** (`DELETE /api/reviews/{id}`) — 204 e a média
+   do avaliado reajusta.
+5. **Proteção de dono**: tente editar/apagar a avaliação de OUTRO dev →
+   `400` "Você só pode editar/apagar a sua própria avaliação."
 
 ### Checklist rápido de regras (bom para dar aula/validar)
 
@@ -156,6 +163,7 @@ O chat é **por sala** (`chatRoomId`). Para abrir uma sala do zero, preencha o
 | Aceitar o PRÓPRIO post | `400` (trigger do banco) |
 | Aceitar post já com corrida ativa | `400` (índice único) |
 | Concluir corrida sendo o autor | `400` (só o helper conclui) |
+| Editar/apagar avaliação de OUTRO dev | `400` "Você só pode editar/apagar a sua própria avaliação." |
 | Abrir chat de corrida que não é sua | erro do WebSocket `Você não participa…` |
 | Corpo acima de 64 KiB no POST /api/posts | `413` Payload Too Large |
 | Upload de imagem sem JWT | `401` |

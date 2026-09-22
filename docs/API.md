@@ -486,6 +486,40 @@ validação), `404` (corrida não existe).
 Paginado (`?page=0&size=10&sort=createdAt,desc`). Exige JWT. Devolve o
 histórico da minha reputação (mesmo formato do item acima).
 
+#### 2.10.3 `PATCH /api/reviews/{id}` — Editar a MINHA avaliação (código 200)
+
+> **Obriga JWT.** Edita `nota` e/ou `comentario` da MINHA avaliação (issue
+> #20) — o dono vem do token. Campo não enviado (ou `null`) permanece como
+> está; `comentario` vazio é ignorado (não "zera" sem querer). A **média do
+> avaliado reajusta** via trigger do banco (agora com `AFTER UPDATE`) e já vem
+> atualizada na resposta.
+
+Corpo de envio (ambos opcionais — é PATCH):
+
+```json
+{ "nota": 5, "comentario": "Reavaliei depois da explicação: excelente." }
+```
+
+| Campo | Tipo | Obrigatório | Regras |
+|-------|------|------------|--------|
+| `nota` | `number` | Não | inteiro 1–5 |
+| `comentario` | `string` | Não | máx. 1000 caracteres; vazio é ignorado |
+
+Resposta — `200 OK`: mesmo JSON do POST (com `mediaAvaliacoesDoAvaliado` já
+recalculado).
+
+Erros: `401`, `400` "Você só pode editar a sua própria avaliação." /
+validação, `404` (avaliação não existe).
+
+#### 2.10.4 `DELETE /api/reviews/{id}` — Apagar a MINHA avaliação (código 204)
+
+> **Obriga JWT.** Apaga a MINHA avaliação (issue #20). A **média do avaliado
+> reajusta** via trigger (agora com `AFTER DELETE`) e o item sai do
+> histórico dele. Não devolve corpo — `204 No Content`.
+
+Erros: `401`, `400` "Você só pode apagar a sua própria avaliação.",
+`404` (avaliação não existe).
+
 ---
 
 ### 2.11 Chat em tempo real (WebSocket/STOMP)
@@ -808,6 +842,7 @@ não muda a versão do JSON).
 - [x] Autenticação JWT e substituição do `authorId` manual pelo usuário da sessão
 - [x] Endpoints da "corrida" (`sessions`): aceitar socorro, máquina de estados,
       transferência de pontos e avaliações mútuas (`reviews`)
+- [x] Editar/excluir a própria avaliação (`PATCH`/`DELETE /api/reviews/{id}`) + trigger recalcula média em UPDATE/DELETE
 - [x] Chat em tempo real da sala (WebSocket/STOMP + histórico em `chat_messages`)
 - [x] Refresh token / logout forçado (revogação)
 - [x] Upload real de prints (MinIO local em dev, S3-compatível — troca de cloud sem trocar código) em vez de `mediaUrl` solta
