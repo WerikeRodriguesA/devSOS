@@ -13,6 +13,10 @@
 - **Paginação:** parâmetros `?page=0&size=10` (base 0) no `PagedModel` do Spring.
 - **IDs:** UUIDv4 (string de 36 caracteres).
 - **Erros:** envelope único `ApiError` (ver seção 4).
+- **Rate limiting:** rotas públicas sensíveis (`POST /api/auth/login`,
+  `/register`, `/refresh`) e o feed (`GET /api/posts`) limitam por IP. Ao
+  estourar, a resposta é `429` com `ApiError` + `Retry-After` (segundos) — ver
+  seção 4.1.
 - **Autenticação:** rotas protegidas exigem o cabeçalho
   `Authorization: Bearer <token>` (JWT obtido em `/api/auth/login` ou
   `/api/auth/register`). Sem token → `401`; token presente nas rotas públicas
@@ -73,7 +77,8 @@ Resposta — `201 Created`:
 | `refreshToken` | `string` | **Refresh token opaco** (43 chars, base64url). Renova o access sem pedir a senha (ver 2.3) e revoga sessão (ver 2.4). **Guarde-o com segurança e rotacione a cada uso.** |
 | `refreshExpiraEmSegundos` | `number` | Vida útil do refresh token (padrão 7 dias). |
 
-Erros: `400` (validação de formulário), `400` (e-mail já cadastrado).
+Erros: `400` (validação de formulário), `400` (e-mail já cadastrado),
+`429` (rate limit — ver seção 4.1).
 
 ---
 
@@ -89,7 +94,8 @@ Resposta — `200 OK`: mesma estrutura do `register` (access JWT + expiração
 + perfil + refresh token + expiração do refresh).
 
 Erros: `400` "E-mail ou senha inválidos." (credenciais erradas — o atacante não
-descobre se o e-mail existe sozinho), `400` (validação).
+descobre se o e-mail existe sozinho), `400` (validação), `429` (rate limit —
+ver seção 4.1).
 
 > **Como usar o token:** inclua em toda requisição protegida o cabeçalho
 > `Authorization: Bearer <token>`.
@@ -118,6 +124,7 @@ perfil + **refresh token NOVO**).
 | Token inexistente | `400 "Refresh token inválido."` |
 | Token **reutilizado** (já foi consumido/revogado) | `400` + **revoga TODAS as sessões do usuário** (suspeita de roubo — um token que vazou é usado por dois agentes) |
 | Token expirado | `400` (idem acima) |
+| Rate limit estourado | `429` + `Retry-After` (ver seção 4.1) |
 
 > O refresh token é **opaco** e vive só no banco como **hash SHA-256**
 > (tabela `refresh_tokens`, migração V2). O valor cru existe apenas na
@@ -266,6 +273,9 @@ Resposta — `200 OK` (estrutura `PagedModel` do Spring)
   }
 }
 ```
+
+> **Rate limit:** o feed é público e tem teto por IP bem folgado (padrão
+> 60 req/min); estourou, responde `429` + `Retry-After` (ver seção 4.1).
 
 ---
 
@@ -753,11 +763,55 @@ Mapa de exceções → HTTP (veja `GlobalExceptionHandler`):
 | `DataIntegrityViolationException` | `409` (rede de segurança do banco) |
 | **Sem token / token inválido** (filtro de segurança) | `401` |
 | **Token válido, sem permissão** (filtro de segurança) | `403` |
+| **Estouro de rate limit** (filtro de rate limiting) | `429` + `Retry-After` (ver 4.1) |
 | Qualquer outra `Exception` | `500` (mensagem neutra) |
 
 > Os casos `401`/`403` não passam pelo `GlobalExceptionHandler`: são gravados
 > pelo `RestAuthenticationHandler` (via `SecurityFilterChain`) com o MESMO
 > formato `ApiError`.
+
+### 4.1 Rate limiting (`429 Too Many Requests`)
+
+As rotas públicas sensíveis são limitadas **por IP** para dificultar brute
+force de senha e criação em massa de contas. Ao estourar o teto:
+
+```http
+HTTP/1.1 429 Too Many Requests
+Retry-After: 60
+X-RateLimit-Limit: 5
+X-RateLimit-Remaining: 0
+Content-Type: application/json
+```
+
+```json
+{
+  "timestamp": "2026-09-21T12:00:00Z",
+  "status": 429,
+  "error": "Too Many Requests",
+  "message": "Muitas tentativas em pouco tempo. Aguarde 60s e tente novamente.",
+  "fieldErrors": {}
+}
+```
+
+| Rota | Limite padrão | Janela |
+|------|---------------|--------|
+| `POST /api/auth/login` | 5 | 60 s |
+| `POST /api/auth/register` | 5 | 60 s |
+| `POST /api/auth/refresh` | 10 | 60 s |
+| `GET /api/posts` (feed) | 60 | 60 s |
+
+- **Cooldown progressivo:** cada novo estouro do mesmo IP dobra o tempo de
+  espera (`Retry-After`), até `max-cooldown-segundos` (padrão 300 s). Um
+  período longo sem estourar zera as penalidades.
+- **Mensagem neutra:** a resposta não revela se um e-mail/usuário específico
+  foi bloqueado (evita vazamento de informação).
+- **Atrás de proxy:** o IP vem de `getRemoteAddr()`. Só use
+  `X-Forwarded-For` (`devsos.rate-limit.trust-forwarded-header=true`) atrás de
+  um proxy reverso confiável — o cabeçalho é forjável pelo cliente.
+- **Config:** `devsos.rate-limit.*` em `application.properties` (ver
+  `RateLimitProperties`). Desligar: `devsos.rate-limit.enabled=false`.
+- **Estado em memória:** vale por instância. Várias réplicas exigiriam um
+  contador compartilhado (ex.: Redis/bucket4j) — fora do escopo desta iteração.
 
 ---
 
@@ -853,6 +907,7 @@ não muda a versão do JSON).
 - [x] Flyway para versionar a DDL junto do deploy (migrações em `backend/src/main/resources/db/migration/`, aplicadas no boot)
 - [x] Integração com OpenAPI/Swagger (UI em `/swagger-ui`)
 - [x] Suíte de testes automatizados (JUnit 5 + MockMvc + Testcontainers): auth, feed, corrida, reviews, pontos e concorrência do duplo aceite (`mvn test`)
+- [x] Rate limiting por IP em rotas públicas (login/register/refresh + feed): `429` + `Retry-After`, cooldown progressivo e mensagem neutra
 
 ---
 
