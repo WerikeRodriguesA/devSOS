@@ -117,6 +117,16 @@
             <artifactId>flyway-database-postgresql</artifactId>
         </dependency>
 
+        <!-- Logs estruturados JSON (logstash-format à la ELK) com traceId do MDC
+             (issue #18). Só a FASE 1 offline: JSON + traceId. Quando a rede
+             voltar, o follow-up adiciona o spring-boot-starter-actuator (health
+             padronizada /actuator/health etc.), Prometheus e tracing bridge. -->
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>8.1</version>
+        </dependency>
+
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
