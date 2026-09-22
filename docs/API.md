@@ -228,6 +228,55 @@ usuário reloga no dispositivo que quiser).
 
 ---
 
+## 3. Observabilidade — `/api/ops/*` (Fase 1, offline-first)
+
+Endpoint de operação criado na **issue #18** (Fase 1, sem Actuator/Prometheus —
+a rede está fora, então tudo é **100% offline** com o que já existia no `.m2`).
+
+| Rota | Auth | O que faz |
+|------|------|-----------|
+| `GET /api/ops/health` | **Público** | Probe L7 p/ orquestrador: status geral + banco + jwt |
+| `GET /api/ops/metrics` | **JWT** | Snapshot das métricas de negócio em memória |
+
+### 3.1 `GET /api/ops/health` — Probe de liveness (código 200/503)
+
+> **Público** (sem JWT) para o K8s/orquestrador chamar. Banco testado com
+> `SELECT 1` (o mesmo probe clássico). JWT vira `DOWN` se as falhas recentes
+> estouraram a tolerância (`TOLERANCIA_FALHAS_JWT`).
+
+```json
+{
+  "geral": "UP",
+  "banco": "UP",
+  "jwt": "UP",
+  "data": "2026-09-22T12:00:00.000Z"
+}
+```
+
+Erros: `503` (banco OU jwt DOWN), `200` (tudo UP).
+
+### 3.2 `GET /api/ops/metrics` — Snapshot das métricas (código 200)
+
+> **Exige JWT.** Cobrado no `SecurityConfig` (não é público como o health).
+
+```json
+{
+  "corridasPorStatus": { "ACTIVE": 3, "COMPLETED": 41 },
+  "aceite": { "count": 41, "totalMs": 642000, "mediaMs": 15658.5,
+              "minMs": 812, "maxMs": 81200,
+              "porFaixa": { "menos-de-1s": 秀0, "1s-a-5s": 0, "5s-a-30s": 0, "mais-de-30s": 41 } },
+  "falhasJwt": 0,
+  "http4xx": 12,
+  "http5xx": 0
+}
+```
+
+> **Roadmap (#18):** quando a rede voltar, trocar esta Fase 1 pelo **Actuator +
+> Micrometer/Prometheus**, mantendo o **mesmo contrato JSON** aqui documentado —
+> o cliente de ops não quebra.
+
+---
+
 ### 2.8 `GET /api/users/{id}` — Buscar perfil público (aberto)
 
 Parâmetros:
