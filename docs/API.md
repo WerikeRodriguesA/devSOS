@@ -150,7 +150,85 @@ Erros: `401` (sem token), `400 "Refresh token não encontrado."`.
 
 ---
 
-### 2.5 `GET /api/users/{id}` — Buscar perfil público (aberto)
+### 2.5 `POST /api/auth/forgot-password` — Iniciar recuperação de senha (código 202)
+
+**Rota pública** (sem JWT). Corpo de envio:
+
+```json
+{ "email": "ana@dev.com" }
+```
+
+Resposta — `202 Accepted`:
+
+```json
+{
+  "message": "Se este e-mail estiver cadastrado, enviaremos as instruções de recuperação.",
+  "tokenDesenvolvimento": null
+}
+```
+
+| Situação | Comportamento |
+|----------|---------------|
+| E-mail **cadastrado** | Gera um token de uso único (válido por 30 min), "envia" por e-mail e devolve a mensagem neutra |
+| E-mail **inexistente** | Devolve a **mesma** mensagem e o mesmo `202` — não revela se a conta existe |
+| E-mail em formato inválido | `400` (validação) |
+| `devsos.auth.expor-token-reset=true` | `tokenDesenvolvimento` vem preenchido (facilitador de DEV/TESTE — em produção é `null`) |
+
+> **Fase 1 (sem provedor de e-mail):** o `RecuperacaoSenhaNotifier` apenas
+> registra o token/link no log do servidor. Quando um provedor (SMTP/SES) for
+> plugado, a interface do notificador não muda. A verificação de e-mail no
+> cadastro é um follow-up separado.
+
+---
+
+### 2.6 `POST /api/auth/reset-password` — Redefinir a senha com o token (código 204)
+
+**Rota pública** (sem JWT — é justamente para quem perdeu a senha). Corpo:
+
+```json
+{ "token": "Dk273lGmcjD7...", "novaSenha": "minhaNovaSenha1" }
+```
+
+`novaSenha` entre 8 e 100 caracteres. Resposta `204 No Content` (sem corpo).
+
+| Situação | Comportamento |
+|----------|---------------|
+| Token válido | Grava a senha nova (BCrypt), marca o token como usado e **revoga todas as sessões** do usuário |
+| Token inexistente, expirado ou já usado | `400 "Token de recuperação inválido ou expirado."` |
+| `novaSenha` fora do tamanho | `400` (validação) |
+
+> O token é **opaco** e vive no banco só como **hash SHA-256** (tabela
+> `password_reset_tokens`, migração V5), com uso único (`used_at`) e validade
+> de 30 min. Vazamento do banco não libera tokens utilizáveis.
+
+---
+
+### 2.7 `POST /api/auth/change-password` — Trocar a senha logado (código 204)
+
+**Exige JWT**. Diferente do reset, aqui o usuário **sabe a senha atual** e
+apenas quer trocá-la. Corpo:
+
+```json
+{ "senhaAtual": "minhaSenhaAtual1", "novaSenha": "minhaNovaSenha2" }
+```
+
+Resposta `204 No Content`. Ao trocar, **todas as sessões são revogadas** (o
+usuário reloga no dispositivo que quiser).
+
+| Situação | Comportamento |
+|----------|---------------|
+| Senha atual correta | `204`, grava a nova e revoga as sessões |
+| Senha atual incorreta | `400 "Senha atual incorreta."` |
+| Nova senha igual à atual | `400 "A nova senha deve ser diferente da atual."` |
+| Sem JWT | `401` (ver seção 1) |
+| `novaSenha` fora do tamanho | `400` (validação) |
+
+> **Nota:** estas três rotas ainda **não** têm rate limit específico (anti-abuso);
+> a proteção dedicada para tentativas de recuperação de senha é um follow-up.
+
+---
+
+### 2.8 `GET /api/users/{id}` — Buscar perfil público (aberto)
 
 Parâmetros:
 
@@ -179,7 +257,7 @@ Erros: `404` se o usuário não existir. Rota pública (não precisa de token).
 
 ---
 
-### 2.6 `PATCH /api/users/{id}/technologies` — Atualizar tecnologias dominadas
+### 2.9 `PATCH /api/users/{id}/technologies` — Atualizar tecnologias dominadas
 
 > **Obriga JWT.** O `id` atualizado é o do **usuário logado** (o `{id}` do path
 > é aceito por compatibilidade de URL, mas o dono vem do token) — ninguém altera
@@ -220,7 +298,7 @@ Erros: `401` (sem token), `400` (body inválido), `404` (usuário não existe).
 
 ---
 
-### 2.7 `GET /api/posts` — Listar feed paginado (posts `OPEN`, aberto)
+### 2.10 `GET /api/posts` — Listar feed paginado (posts `OPEN`, aberto)
 
 Popular busca/filtros (issue #16):
 
@@ -279,7 +357,7 @@ Resposta — `200 OK` (estrutura `PagedModel` do Spring)
 
 ---
 
-### 2.8 `POST /api/posts` — Criar publicação (código 201)
+### 2.11 `POST /api/posts` — Criar publicação (código 201)
 
 > **Obriga JWT.** Desde a iteração de autenticação, o **autor** do post é o
 > usuário logado (definido pelo token) — o campo `authorId` **deixou de existir**
@@ -339,7 +417,7 @@ Erros:
 
 ---
 
-### 2.9 Corridas (`sessions`) — a dinâmica "Uber" do DevSOS
+### 2.12 Corridas (`sessions`) — a dinâmica "Uber" do DevSOS
 
 > **Todas as rotas de corrida exigem JWT.** O usuário logado é o **helper** no
 > aceite e o "participante" no restante. Corridas de terceiros são invisíveis
@@ -366,7 +444,7 @@ Regras extras: 1 corrida ativa por post (barrada no Service **e** no banco por
 índice único); não dá para aceitar o próprio post; só dá para CONCLUIR partindo
 de ACTIVE (transição de MATCHED direto é `400`).
 
-#### 2.9.1 `POST /api/sessions` — Aceitar socorro (código 201)
+#### 2.12.1 `POST /api/sessions` — Aceitar socorro (código 201)
 
 Corpo de envio (o `helper` vem do token):
 
@@ -394,8 +472,8 @@ Resposta — `201 Created` (Status de um post: entra `IN_PROGRESS`, sai do feed)
 ```
 
 > `chatRoomId`: sala de chat criada automaticamente no aceite. Os dois
-> participantes conversam nela pelo **chat em tempo real** (seção 2.11) e o
-> histórico fica disponível em `GET /api/sessions/{id}/messages` (seção 2.11.3).
+> participantes conversam nela pelo **chat em tempo real** (seção 2.14) e o
+> histórico fica disponível em `GET /api/sessions/{id}/messages` (seção 2.14.3).
 
 Erros:
 
@@ -407,7 +485,7 @@ Erros:
 | `409` | **Duplo aceite**: se dois helpers aceitarem o mesmo post no mesmo instante, o índice único (`uniq_sessions_post_active`) barra o 2º como `409` — na prática o **lock pessimista** (issue #13) resolve primeiro: o 2º helper relê o post `IN_PROGRESS` e recebe `400` na regra acima, mas o `409` segue existindo como "cinto de segurança" do banco |
 | `409` | Corrida de concorrência: outro helper aceitou no mesmo instante (índice único) |
 
-#### 2.9.2 `PATCH /api/sessions/{id}` — Avançar a corrida (código 200)
+#### 2.12.2 `PATCH /api/sessions/{id}` — Avançar a corrida (código 200)
 
 > **Obriga JWT.** Só participantes da corrida (autor ou helper).
 
@@ -432,26 +510,26 @@ Corpo de envio:
 Erros: `401`, `400` (não participa / transição ilegal / status alvo inválido ou
 já atual), `404`.
 
-#### 2.9.3 `GET /api/sessions` — Minhas corridas (código 200)
+#### 2.12.3 `GET /api/sessions` — Minhas corridas (código 200)
 
 Onde você participa como **autor** ou **helper** — paginado
 (`?page=0&size=10&sort=createdAt,desc`). Exige JWT. Formato: `PagedModel`
 com itens iguais ao do aceite.
 
-#### 2.9.4 `GET /api/sessions/{id}` — Detalhe de uma corrida (código 200)
+#### 2.12.4 `GET /api/sessions/{id}` — Detalhe de uma corrida (código 200)
 
 Exige JWT e participação. Terceiros recebem `400` "Você não participa desta
 corrida." (a existência da corrida não é revelada).
 
 ---
 
-### 2.10 Avaliações mútuas (`reviews`) — pós-corrida
+### 2.13 Avaliações mútuas (`reviews`) — pós-corrida
 
 > **Todas as rotas exigem JWT.** O **avaliador** é o usuário logado e o
 > **avaliado** é SEMPRE o outro lado da corrida (autor ↔ helper) — o cliente
 > não escolhe quem avaliar (isso impede que se avalie estranhos).
 
-#### 2.10.1 `POST /api/reviews` — Avaliar a corrida (código 201)
+#### 2.13.1 `POST /api/reviews` — Avaliar a corrida (código 201)
 
 Requisitos: corrida `COMPLETED`, você participa dela e ainda não avaliou
 (1 review por pessoa por corrida).
@@ -492,7 +570,7 @@ Resposta — `201 Created` (média do avaliado já recalculada pelo trigger do b
 Erros: `401`, `400` (corrida não concluída / você não participa / já avaliou /
 validação), `404` (corrida não existe).
 
-#### 2.10.2 `GET /api/reviews` — Avaliações que EU recebi (código 200)
+#### 2.13.2 `GET /api/reviews` — Avaliações que EU recebi (código 200)
 
 Paginado (`?page=0&size=10&sort=createdAt,desc`). Exige JWT. Devolve o
 histórico da minha reputação (mesmo formato do item acima).
@@ -533,7 +611,7 @@ Erros: `401`, `400` "Você só pode apagar a sua própria avaliação.",
 
 ---
 
-### 2.11 Chat em tempo real (WebSocket/STOMP)
+### 2.14 Chat em tempo real (WebSocket/STOMP)
 
 Quando existe uma corrida (`sessions`), os dois participantes conversam numa
 **sala** identificada pelo `chatRoomId` (criado no aceite). O chat tem duas
@@ -544,7 +622,7 @@ metades:
 | **Tempo real** | WebSocket (SockJS + STOMP) | trocar mensagens ao vivo na sala |
 | **Histórico** | REST (`GET /api/sessions/{id}/messages`) | carregar mensagens anteriores |
 
-#### 2.11.1 Conectar (handshake SockJS)
+#### 2.14.1 Conectar (handshake SockJS)
 
 O backend expõe um endpoint SockJS em `/ws-devsos`. O token JWT vai como
 parâmetro de consulta (o servidor identifica você pelo JWT, nunca pelo que o
@@ -564,7 +642,7 @@ usuário do token.
 > `c[...]` (fechamento). Quem usar a biblioteca `@stomp/stompjs` não precisa
 > se preocupar com isso — o `webSocketFactory` cuida do envelope.
 
-#### 2.11.2 Assinar e enviar
+#### 2.14.2 Assinar e enviar
 
 | Ação | Frame STOMP | Destino |
 |------|-------------|---------|
@@ -601,7 +679,7 @@ helper) recebe um frame `ERROR` com a mensagem `Você não participa desta sala
 de chat.` e a conexão é encerrada (`1002`) — valendo tanto para `SUBSCRIBE`
 quanto para `SEND`.
 
-#### 2.11.3 Histórico — `GET /api/sessions/{id}/messages`
+#### 2.14.3 Histórico — `GET /api/sessions/{id}/messages`
 
 > **Obriga JWT.** Só participantes da corrida (autor ou helper).
 
@@ -632,7 +710,7 @@ GET /api/sessions/{id}/messages
 > `GET /api/sessions/{id}/messages` para o histórico → assinar o tópico para as
 > mensagens novas em tempo real.
 
-### 2.12 `POST /api/uploads` — Subir o print do problema (código 201)
+### 2.15 `POST /api/uploads` — Subir o print do problema (código 201)
 
 > **Obriga JWT.** Antes, `mediaUrl` só aceitava um link colado de fora (ex.:
 > Imgur). Agora o DevSOS tem **storage próprio** (um MinIO local em dev —
@@ -665,7 +743,7 @@ mesmo contrato de sempre. Ela aponta para `GET /api/uploads/{chave}`, que
 **serve o arquivo direto do storage** (sem expor o MinIO). Quem criou o post
 não precisa guardar o arquivo: o "print" segue vivo no bucket.
 
-#### 2.12.1 `GET /api/uploads/{chave}` — Baixar a imagem (público)
+#### 2.15.1 `GET /api/uploads/{chave}` — Baixar a imagem (público)
 
 > **Público** (como o feed): qualquer um vê a imagem de um post — `GET` tem
 > `permitAll` no `SecurityConfig`; quem **subir** (`POST`) precisa de JWT.
@@ -906,8 +984,11 @@ não muda a versão do JSON).
 - [x] Limite de tamanho do body no `POST /api/posts` (`MaxRequestBodySizeFilter`, 413 em `devsos.posts.max-body-bytes` = 64 KiB default)
 - [x] Flyway para versionar a DDL junto do deploy (migrações em `backend/src/main/resources/db/migration/`, aplicadas no boot)
 - [x] Integração com OpenAPI/Swagger (UI em `/swagger-ui`)
-- [x] Suíte de testes automatizados (JUnit 5 + MockMvc + Testcontainers): auth, feed, corrida, reviews, pontos e concorrência do duplo aceite (`mvn test`)
-- [x] Rate limiting por IP em rotas públicas (login/register/refresh + feed): `429` + `Retry-After`, cooldown progressivo e mensagem neutra
+- [x] Suíte de testes automatizados (JUnit 5 + Mockito + Testcontainers): auth, feed, corrida/reviews, busca, lock, senha, perfil, rate limit e concorrência do duplo aceite (`mvn test`)
+- [x] Rate limiting por IP em rotas públicas (login/register/refresh + feed)
+- [x] Conta/senha: recuperação de senha por token opaco (`forgot-password`/`reset-password`), troca de senha autenticada (`change-password`), revogando as sessões
+- [ ] Verificação de e-mail no cadastro (confirmação) — follow-up da issue #14
+- [ ] Rate limit específico em `forgot-password`/`reset-password` (anti-abuso) — follow-up
 
 ---
 

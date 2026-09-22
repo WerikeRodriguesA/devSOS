@@ -9,6 +9,7 @@ import com.devsos.domain.user.UserEntity;
 import com.devsos.infrastructure.repository.RefreshTokenRepository;
 import com.devsos.infrastructure.repository.UserRepository;
 import com.devsos.infrastructure.security.JwtService;
+import com.devsos.infrastructure.security.TokenOpaco;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -16,12 +17,7 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.time.Instant;
-import java.util.Base64;
 import java.util.UUID;
 
 /**
@@ -52,13 +48,9 @@ import java.util.UUID;
 @Service
 public class RefreshTokenService {
 
-    /** Gerador criptograficamente seguro para os tokens opacos. */
-    private static final SecureRandom RANDOM = new SecureRandom();
-
     private final RefreshTokenRepository refreshTokenRepository;
     private final UserRepository userRepository;
     private final JwtService jwtService;
-    private final MessageDigest sha256;
     private final long expiracaoSegundos;
 
     /**
@@ -76,7 +68,6 @@ public class RefreshTokenService {
         this.refreshTokenRepository = refreshTokenRepository;
         this.userRepository = userRepository;
         this.jwtService = jwtService;
-        this.sha256 = novoDigest();
         this.expiracaoSegundos = expiracaoSegundos;
         this.txIsolada = new TransactionTemplate(txManager);
         this.txIsolada.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -92,8 +83,8 @@ public class RefreshTokenService {
      */
     @Transactional
     public AuthResponseDTO emitirTokens(UserEntity usuario) {
-        String tokenCru = gerarTokenCru();
-        refreshTokenRepository.save(new RefreshTokenEntity(usuario.getId(), hashDoToken(tokenCru), expiracaoSegundos));
+        String tokenCru = TokenOpaco.gerar();
+        refreshTokenRepository.save(new RefreshTokenEntity(usuario.getId(), TokenOpaco.hash(tokenCru), expiracaoSegundos));
         limparExpirados();
         return montarResposta(usuario, tokenCru);
     }
@@ -112,7 +103,7 @@ public class RefreshTokenService {
      */
     @Transactional
     public AuthResponseDTO reemitirTokens(String tokenCru) {
-        RefreshTokenEntity atual = refreshTokenRepository.findByTokenHash(hashDoToken(tokenCru))
+        RefreshTokenEntity atual = refreshTokenRepository.findByTokenHash(TokenOpaco.hash(tokenCru))
             .orElseThrow(() -> new RegraDeNegocioException("Refresh token inválido."));
 
         if (atual.isRevogado() || atual.estaExpirado()) {
@@ -127,9 +118,9 @@ public class RefreshTokenService {
         UserEntity usuario = userRepository.findById(atual.getUserId())
             .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado."));
 
-        String novoToken = gerarTokenCru();
+        String novoToken = TokenOpaco.gerar();
         RefreshTokenEntity substituto = refreshTokenRepository.save(
-            new RefreshTokenEntity(usuario.getId(), hashDoToken(novoToken), expiracaoSegundos));
+            new RefreshTokenEntity(usuario.getId(), TokenOpaco.hash(novoToken), expiracaoSegundos));
         atual.revogar(substituto.getId()); // rotação: o antigo chega ao fim já revogado
         refreshTokenRepository.save(atual);
         limparExpirados();
@@ -152,7 +143,7 @@ public class RefreshTokenService {
         if (tokenCru == null || tokenCru.isBlank()) {
             refreshTokenRepository.revogarTodosDoUsuario(userId, Instant.now());
         } else {
-            RefreshTokenEntity alvo = refreshTokenRepository.findByTokenHash(hashDoToken(tokenCru))
+            RefreshTokenEntity alvo = refreshTokenRepository.findByTokenHash(TokenOpaco.hash(tokenCru))
                 .orElseThrow(() -> new RegraDeNegocioException("Refresh token não encontrado."));
             if (!userId.equals(alvo.getUserId())) {
                 throw new RegraDeNegocioException("Refresh token não pertence a este usuário.");
@@ -164,35 +155,6 @@ public class RefreshTokenService {
     }
 
     // ------------------------------------------------------------------ helpers
-
-    /** 32 bytes aleatórios → 43 chars base64url: 256 bits de entropia. */
-    private static String gerarTokenCru() {
-        byte[] bytes = new byte[32];
-        RANDOM.nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-    }
-
-    private static String hashDoToken(String tokenCru) {
-        byte[] digest = novoDigest().digest(tokenCru.getBytes(StandardCharsets.UTF_8));
-        return hexOf(digest);
-    }
-
-    private static MessageDigest novoDigest() {
-        try {
-            return MessageDigest.getInstance("SHA-256");
-        } catch (NoSuchAlgorithmException ex) {
-            throw new IllegalStateException("JVM sem SHA-256", ex);
-        }
-    }
-
-    private static String hexOf(byte[] bytes) {
-        StringBuilder sb = new StringBuilder(64);
-        for (byte b : bytes) {
-            sb.append(Character.forDigit((b >> 4) & 0xF, 16))
-              .append(Character.forDigit(b & 0xF, 16));
-        }
-        return sb.toString();
-    }
 
     private AuthResponseDTO montarResposta(UserEntity usuario, String tokenCru) {
         String accessToken = jwtService.gerarToken(usuario.getId(), usuario.getEmail(), usuario.getNome());

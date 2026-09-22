@@ -64,7 +64,8 @@ public class SecurityConfig {
                 .authenticationEntryPoint(restAuthenticationHandler)  // 401
                 .accessDeniedHandler(restAuthenticationHandler))      // 403
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/register", "/api/auth/login", "/api/auth/refresh").permitAll()
+                .requestMatchers("/api/auth/register", "/api/auth/login", "/api/auth/refresh",
+                    "/api/auth/forgot-password", "/api/auth/reset-password").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/posts", "/api/posts/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/users", "/api/users/**").permitAll()
                 // Imagens de prints são públicas (o feed mostra para qualquer um);
