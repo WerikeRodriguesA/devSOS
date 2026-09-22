@@ -25,4 +25,7 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
     boolean existsByGithubUsername(String githubUsername);
 
     boolean existsByEmail(String email);
+
+    /** GitHub em uso POR OUTRO usuário (exclui o próprio — edição de perfil). */
+    boolean existsByGithubUsernameAndIdNot(String githubUsername, UUID id);
 }

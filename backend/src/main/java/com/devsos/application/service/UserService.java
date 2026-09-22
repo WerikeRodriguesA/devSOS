@@ -1,7 +1,9 @@
 package com.devsos.application.service;
 
+import com.devsos.application.dto.user.AtualizarPerfilRequestDTO;
 import com.devsos.application.dto.user.AtualizarTecnologiasRequestDTO;
 import com.devsos.application.dto.user.UserProfileResponseDTO;
+import com.devsos.application.exception.RegraDeNegocioException;
 import com.devsos.application.exception.ResourceNotFoundException;
 import com.devsos.domain.user.UserEntity;
 import com.devsos.infrastructure.repository.UserRepository;
@@ -77,6 +79,53 @@ public class UserService {
         user.setTecnologiasDominadas(tecnologias);
         userRepository.saveAndFlush(user);
 
+        return UserProfileResponseDTO.from(user);
+    }
+
+    /**
+     * Edita o perfil completo ({@code PATCH /api/users/me}): nome, bio,
+     * githubUsername, avatarUrl e tecnologias. Cada campo é OPCIONAL —
+     * {@code null} significa "não alterar"; string vazia significa "limpar".
+     * <p>
+     * O DONO vem do token (o controller só passa {@code logado.id()} aqui) —
+     * não existe o conceito de "editar o perfil de outro usuário" nesta rota.
+     */
+    @Transactional
+    public UserProfileResponseDTO atualizarPerfil(UUID id, AtualizarPerfilRequestDTO request) {
+        UserEntity user = userRepository.findById(id)
+            .orElseThrow(() -> ResourceNotFoundException.of("Usuário"));
+
+        if (request.nome() != null) {
+            user.setNome(request.nome().trim());
+        }
+
+        if (request.bio() != null) {
+            user.setBio(request.bio().trim());
+        }
+
+        if (request.avatarUrl() != null) {
+            user.setAvatarUrl(request.avatarUrl().trim());
+        }
+
+        if (request.githubUsername() != null) {
+            String github = request.githubUsername().trim();
+            if (!github.isBlank()
+                    && userRepository.existsByGithubUsernameAndIdNot(github, id)) {
+                throw new RegraDeNegocioException("Este GitHub username já está em uso.");
+            }
+            user.setGithubUsername(github);
+        }
+
+        if (request.tecnologiasDominadas() != null) {
+            List<String> tecnologias = request.tecnologiasDominadas()
+                .stream()
+                .map(String::trim)
+                .map(s -> s.toLowerCase(java.util.Locale.ROOT))
+                .toList();
+            user.setTecnologiasDominadas(tecnologias);
+        }
+
+        userRepository.saveAndFlush(user);
         return UserProfileResponseDTO.from(user);
     }
 }

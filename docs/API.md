@@ -298,6 +298,46 @@ Erros: `401` (sem token), `400` (body inválido), `404` (usuário não existe).
 
 ---
 
+### 2.9.1 `PATCH /api/users/me` — Editar o perfil completo (código 200)
+
+**Obriga JWT.** Edita nome, bio, `githubUsername`, `avatarUrl` e tecnologias do
+**usuário logado** — o dono vem do token, não existe "editar perfil de terceiro".
+
+Todos os campos são **opcionais** (edição parcial): campo **não enviado**
+(`null`) não é alterado; **string vazia** (`""`) limpa o campo (bio/avatar/github)
+ou zera a lista (tecnologias).
+
+Cabeçalhos: `Content-Type: application/json` + `Authorization: Bearer <token>`
+
+Corpo de envio (exemplo):
+
+```json
+{
+  "nome": "Ana Renovada",
+  "bio": "Dev backend especialista em Java e Spring",
+  "githubUsername": "ana-dev",
+  "avatarUrl": "https://github.com/ana-dev.png",
+  "tecnologiasDominadas": ["Java", "Spring Boot"]
+}
+```
+
+| Campo | Tipo | Regras (se enviado) |
+|-------|------|---------------------|
+| `nome` | `string` | 2 a 120 caracteres |
+| `bio` | `string` | máx. 500 caracteres |
+| `githubUsername` | `string` | máx. 60; letras, números e hífens (não pode começar/terminar em hífen); **deve ser único** entre usuários |
+| `avatarUrl` | `string` | máx. 255; vazio ou URL absoluta começando em `http://`/`https://` |
+| `tecnologiasDominadas` | `array<string>` | máx. 30 itens; cada item tem de 1 a 40 caracteres; normalizadas em minúsculas |
+
+Resposta — `200 OK`: mesmo formato do `GET /api/users/{id}` (§2.8) com os
+campos já aplicados/normalizados.
+
+Erros: `401` (sem token), `400` (validação com `fieldErrors` por campo),
+`400 "Este GitHub username já está em uso."`, `404` (usuário não existe, ex.:
+token de um usuário já apagado).
+
+---
+
 ### 2.10 `GET /api/posts` — Listar feed paginado (posts `OPEN`, aberto)
 
 Popular busca/filtros (issue #16):
@@ -987,8 +1027,7 @@ não muda a versão do JSON).
 - [x] Suíte de testes automatizados (JUnit 5 + Mockito + Testcontainers): auth, feed, corrida/reviews, busca, lock, senha, perfil, rate limit e concorrência do duplo aceite (`mvn test`)
 - [x] Rate limiting por IP em rotas públicas (login/register/refresh + feed)
 - [x] Conta/senha: recuperação de senha por token opaco (`forgot-password`/`reset-password`), troca de senha autenticada (`change-password`), revogando as sessões
-- [ ] Verificação de e-mail no cadastro (confirmação) — follow-up da issue #14
-- [ ] Rate limit específico em `forgot-password`/`reset-password` (anti-abuso) — follow-up
+- [x] Edição completa do perfil (`PATCH /api/users/me`): nome, bio, `githubUsername`, `avatarUrl` e tecnologias, com dono do token e validações por campo (`fieldErrors`)
 
 ---
 
