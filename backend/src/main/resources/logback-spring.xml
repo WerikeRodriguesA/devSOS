@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Logback estruturado (issue #18 - FASE 1 offline).
+
+  Objetivo: logs em JSON para a stack ELK/CLP, com traceId do MDC para
+  correlacionar a cadeia de eventos de uma requisição (o TraceIdFilter
+  popula/cria o "traceId" no MDC e devolve no header X-Trace-Id).
+
+  - Perfil "default"/produção: appender JSON (LogstashEncoder) - 100% offline
+    pois usa net.logstash.logback:logstash-logback-encoder 8.1 (já no .m2).
+  - Perfil "dev" (spring-boot.run.profiles=dev  ou  DEV_SOS_PROFILE=dev):
+    appender console com padronizado legível + caminho do traceId curto no MDC.
+
+  Follow-up (QUANDO a rede voltar): spring-boot-starter-actuator
+  (/actuator/health, /actuator/metrics, /actuator/prometheus), Prometheus
+  registry, Micrometer tracing-bridge-brave (Jaeger/Brave) e health checks do
+  banco/JWT expostos pelo próprio Actuator - documentado em docs/API.md roadmap.
+-->
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeMdcKeyName>traceId</includeMdcKeyName>
+            <customFields>{"app":"devsos-backend","env":"${DEV_SOS_ENV:-local}"}</customFields>
+        </encoder>
+    </appender>
+
+    <springProfile name="dev">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="!dev">
+        <root level="INFO">
+            <appender-ref ref="JSON"/>
+        </root>
+    </springProfile>
+</configuration>

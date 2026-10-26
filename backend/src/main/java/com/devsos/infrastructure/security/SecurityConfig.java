@@ -71,6 +71,11 @@ public class SecurityConfig {
                 // Imagens de prints são públicas (o feed mostra para qualquer um);
                 // subir imagem (POST /api/uploads) continua exigindo JWT.
                 .requestMatchers(HttpMethod.GET, "/api/uploads/**").permitAll()
+                // Observabilidade (issue #18): o health /api/ops/health é o probe
+                // L7 que o orquestrador/K8s chama — precisa ser PÚBLICO (sem JWT)
+                // mas SEM dados sensíveis: só status geral/banco/jwt. Já as métricas
+                // (/api/ops/metrics) expõem contadores de negócio e exigem JWT.
+                .requestMatchers(HttpMethod.GET, "/api/ops/health").permitAll()
                 // OpenAPI/Swagger: spec (/v3/api-docs, JSON e YAML) e UI (/swagger-ui) públicos em dev.
                 // (o /v3/api-docs.yaml tem PONTO antes do sufixo, então o padrão /v3/api-docs/**
                 // não o cobre — precisa da regra explícita)
