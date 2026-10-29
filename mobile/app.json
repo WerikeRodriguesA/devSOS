@@ -8,6 +8,9 @@
     "backgroundColor": "#F6F0FF",
     "android": {
       "package": "com.devsos.mobile"
-    }
+    },
+    "plugins": [
+      "expo-asset"
+    ]
   }
 }
